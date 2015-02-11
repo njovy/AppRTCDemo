@@ -1,6 +1,6 @@
 /*
  * libjingle
- * Copyright 2014, Google Inc.
+ * Copyright 2014 Google Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -27,6 +27,9 @@
 
 package org.appspot.apprtc;
 
+import org.appspot.apprtc.util.AppRTCUtils;
+import org.appspot.apprtc.util.AppRTCUtils.NonThreadSafe;
+
 import android.content.Context;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -34,9 +37,6 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Build;
 import android.util.Log;
-
-import org.appspot.apprtc.util.AppRTCUtils;
-import org.appspot.apprtc.util.AppRTCUtils.NonThreadSafe;
 
 /**
  * AppRTCProximitySensor manages functions related to the proximity sensor in
@@ -53,7 +53,7 @@ public class AppRTCProximitySensor implements SensorEventListener {
   // This class should be created, started and stopped on one thread
   // (e.g. the main thread). We use |nonThreadSafe| to ensure that this is
   // the case. Only active when |DEBUG| is set to true.
-  private final NonThreadSafe nonThreadSafe = new AppRTCUtils.NonThreadSafe();
+  private final NonThreadSafe nonThreadSafe = new NonThreadSafe();
 
   private final Runnable onSensorStateListener;
   private final SensorManager sensorManager;

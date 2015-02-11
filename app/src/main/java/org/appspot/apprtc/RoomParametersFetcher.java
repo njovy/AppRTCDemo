@@ -1,6 +1,6 @@
 /*
  * libjingle
- * Copyright 2014, Google Inc.
+ * Copyright 2014 Google Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -24,13 +24,15 @@
  * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package org.appspot.apprtc;
 
-import android.util.Log;
+package org.appspot.apprtc;
 
 import org.appspot.apprtc.AppRTCClient.SignalingParameters;
 import org.appspot.apprtc.util.AsyncHttpURLConnection;
 import org.appspot.apprtc.util.AsyncHttpURLConnection.AsyncHttpEvents;
+
+import android.util.Log;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -55,6 +57,7 @@ public class RoomParametersFetcher {
   private final RoomParametersFetcherEvents events;
   private final boolean loopback;
   private final String registerUrl;
+  private final String registerMessage;
   private AsyncHttpURLConnection httpConnection;
 
   /**
@@ -74,29 +77,33 @@ public class RoomParametersFetcher {
   }
 
   public RoomParametersFetcher(boolean loopback, String registerUrl,
-      final RoomParametersFetcherEvents events) {
-    Log.d(TAG, "Connecting to room: " + registerUrl);
+      String registerMessage, final RoomParametersFetcherEvents events) {
     this.loopback = loopback;
     this.registerUrl = registerUrl;
+    this.registerMessage = registerMessage;
     this.events = events;
+  }
 
-    httpConnection = new AsyncHttpURLConnection("POST", registerUrl, null,
-      new AsyncHttpEvents() {
-        @Override
-        public void OnHttpError(String errorMessage) {
-          Log.e(TAG, "Room connection error: " + errorMessage);
-          events.onSignalingParametersError(errorMessage);
-        }
+  public void makeRequest() {
+    Log.d(TAG, "Connecting to room: " + registerUrl);
+    httpConnection = new AsyncHttpURLConnection(
+        "POST", registerUrl, registerMessage,
+        new AsyncHttpEvents() {
+          @Override
+          public void onHttpError(String errorMessage) {
+            Log.e(TAG, "Room connection error: " + errorMessage);
+            events.onSignalingParametersError(errorMessage);
+          }
 
-        @Override
-        public void OnHttpComplete(String response) {
-          RoomHttpResponseParse(response);
-        }
-      });
+          @Override
+          public void onHttpComplete(String response) {
+            roomHttpResponseParse(response);
+          }
+        });
     httpConnection.send();
   }
 
-  private void RoomHttpResponseParse(String response) {
+  private void roomHttpResponseParse(String response) {
     Log.d(TAG, "Room response: " + response);
     try {
       LinkedList<IceCandidate> iceCandidates = null;
@@ -115,8 +122,6 @@ public class RoomParametersFetcher {
       String wssUrl = roomJson.getString("wss_url");
       String wssPostUrl = roomJson.getString("wss_post_url");
       boolean initiator = (roomJson.getBoolean("is_initiator"));
-      String roomUrl =
-          registerUrl.substring(0, registerUrl.indexOf("/register"));
       if (!initiator) {
         iceCandidates = new LinkedList<IceCandidate>();
         String messagesString = roomJson.getString("messages");
@@ -143,7 +148,6 @@ public class RoomParametersFetcher {
       }
       Log.d(TAG, "RoomId: " + roomId + ". ClientId: " + clientId);
       Log.d(TAG, "Initiator: " + initiator);
-      Log.d(TAG, "Room url: " + roomUrl);
       Log.d(TAG, "WSS url: " + wssUrl);
       Log.d(TAG, "WSS POST url: " + wssPostUrl);
 
@@ -182,8 +186,7 @@ public class RoomParametersFetcher {
       SignalingParameters params = new SignalingParameters(
           iceServers, initiator,
           pcConstraints, videoConstraints, audioConstraints,
-          roomUrl, roomId, clientId,
-          wssUrl, wssPostUrl,
+          clientId, wssUrl, wssPostUrl,
           offerSdp, iceCandidates);
       events.onSignalingParametersReady(params);
     } catch (JSONException e) {

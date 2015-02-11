@@ -1,6 +1,6 @@
 /*
  * libjingle
- * Copyright 2014, Google Inc.
+ * Copyright 2014 Google Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -24,13 +24,19 @@
  * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package org.appspot.apprtc;
 
-import android.util.Log;
+package org.appspot.apprtc;
 
 import org.appspot.apprtc.util.AsyncHttpURLConnection;
 import org.appspot.apprtc.util.AsyncHttpURLConnection.AsyncHttpEvents;
 import org.appspot.apprtc.util.LooperExecutor;
+
+import android.util.Log;
+
+import de.tavendo.autobahn.WebSocket.WebSocketConnectionObserver;
+import de.tavendo.autobahn.WebSocketConnection;
+import de.tavendo.autobahn.WebSocketException;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -38,15 +44,12 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.LinkedList;
 
-import de.tavendo.autobahn.WebSocket.WebSocketConnectionObserver;
-import de.tavendo.autobahn.WebSocketConnection;
-import de.tavendo.autobahn.WebSocketException;
-
 /**
  * WebSocket client implementation.
- * All public methods should be called from a looper executor thread
- * passed in constructor.
- * All events are issued on the same thread.
+ *
+ * <p>All public methods should be called from a looper executor thread
+ * passed in a constructor, otherwise exception will be thrown.
+ * All events are dispatched on the same thread.
  */
 
 public class WebSocketChannelClient {
@@ -65,10 +68,10 @@ public class WebSocketChannelClient {
   private boolean closeEvent;
   // WebSocket send queue. Messages are added to the queue when WebSocket
   // client is not registered and are consumed in register() call.
-  private LinkedList<String> wsSendQueue;
+  private final LinkedList<String> wsSendQueue;
 
   /**
-   * WebSocketConnectionState is the names of possible WS connection states.
+   * Possible WebSocket connection states.
    */
   public enum WebSocketConnectionState {
     NEW, CONNECTED, REGISTERED, CLOSED, ERROR
@@ -76,7 +79,7 @@ public class WebSocketChannelClient {
 
   /**
    * Callback interface for messages delivered on WebSocket.
-   * All events are invoked from UI thread.
+   * All events are dispatched from a looper executor thread.
    */
   public interface WebSocketChannelEvents {
     public void onWebSocketOpen();
@@ -101,6 +104,7 @@ public class WebSocketChannelClient {
 
   public void connect(final String wsUrl, final String postUrl,
       final String roomID, final String clientID) {
+    checkIfCalledOnValidThread();
     if (state != WebSocketConnectionState.NEW) {
       Log.e(TAG, "WebSocket is already connected.");
       return;
@@ -124,6 +128,7 @@ public class WebSocketChannelClient {
   }
 
   public void register() {
+    checkIfCalledOnValidThread();
     if (state != WebSocketConnectionState.CONNECTED) {
       Log.w(TAG, "WebSocket register() in state " + state);
       return;
@@ -137,28 +142,25 @@ public class WebSocketChannelClient {
       ws.sendTextMessage(json.toString());
       state = WebSocketConnectionState.REGISTERED;
       // Send any previously accumulated messages.
-      synchronized (wsSendQueue) {
-        for (String sendMessage : wsSendQueue) {
-          send(sendMessage);
-        }
-        wsSendQueue.clear();
+      for (String sendMessage : wsSendQueue) {
+        send(sendMessage);
       }
+      wsSendQueue.clear();
     } catch (JSONException e) {
       reportError("WebSocket register JSON error: " + e.getMessage());
     }
   }
 
   public void send(String message) {
+    checkIfCalledOnValidThread();
     switch (state) {
       case NEW:
       case CONNECTED:
         // Store outgoing messages and send them after websocket client
         // is registered.
         Log.d(TAG, "WS ACC: " + message);
-        synchronized (wsSendQueue) {
-          wsSendQueue.add(message);
-          return;
-        }
+        wsSendQueue.add(message);
+        return;
       case ERROR:
       case CLOSED:
         Log.e(TAG, "WebSocket send() in error or closed state : " + message);
@@ -180,15 +182,14 @@ public class WebSocketChannelClient {
   }
 
   // This call can be used to send WebSocket messages before WebSocket
-  // connection is opened. However for now this way of sending messages
-  // is not used until possible race condition of arriving ice candidates
-  // send through websocket before SDP answer sent through http post will be
-  // resolved.
+  // connection is opened.
   public void post(String message) {
+    checkIfCalledOnValidThread();
     sendWSSMessage("POST", message);
   }
 
   public void disconnect(boolean waitForComplete) {
+    checkIfCalledOnValidThread();
     Log.d(TAG, "Disonnect WebSocket. State: " + state);
     if (state == WebSocketConnectionState.REGISTERED) {
       send("{\"type\": \"bye\"}");
@@ -208,9 +209,10 @@ public class WebSocketChannelClient {
       // sending any pending messages to deleted looper thread.
       if (waitForComplete) {
         synchronized (closeEventLock) {
-          if (!closeEvent) {
+          while (!closeEvent) {
             try {
               closeEventLock.wait(CLOSE_TIMEOUT);
+              break;
             } catch (InterruptedException e) {
               Log.e(TAG, "Wait error: " + e.toString());
             }
@@ -241,15 +243,24 @@ public class WebSocketChannelClient {
     AsyncHttpURLConnection httpConnection = new AsyncHttpURLConnection(
         method, postUrl, message, new AsyncHttpEvents() {
           @Override
-          public void OnHttpError(String errorMessage) {
+          public void onHttpError(String errorMessage) {
             reportError("WS " + method + " error: " + errorMessage);
           }
 
           @Override
-          public void OnHttpComplete(String response) {
+          public void onHttpComplete(String response) {
           }
         });
     httpConnection.send();
+  }
+
+   // Helper method for debugging purposes. Ensures that WebSocket method is
+   // called on a looper thread.
+  private void checkIfCalledOnValidThread() {
+    if (!executor.checkOnLooperThread()) {
+      throw new IllegalStateException(
+          "WebSocket method is not called on valid thread");
+    }
   }
 
   private class WebSocketObserver implements WebSocketConnectionObserver {

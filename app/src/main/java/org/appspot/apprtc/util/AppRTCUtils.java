@@ -1,6 +1,6 @@
 /*
  * libjingle
- * Copyright 2014, Google Inc.
+ * Copyright 2014 Google Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -30,6 +30,9 @@ package org.appspot.apprtc.util;
 import android.os.Build;
 import android.util.Log;
 
+/**
+ * AppRTCUtils provides helper functions for managing thread safety.
+ */
 public final class AppRTCUtils {
 
   private AppRTCUtils() {

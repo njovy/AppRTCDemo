@@ -1,6 +1,6 @@
 /*
  * libjingle
- * Copyright 2014, Google Inc.
+ * Copyright 2014 Google Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -27,6 +27,8 @@
 
 package org.appspot.apprtc;
 
+import org.appspot.apprtc.util.AppRTCUtils;
+
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -34,8 +36,6 @@ import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.media.AudioManager;
 import android.util.Log;
-
-import org.appspot.apprtc.util.AppRTCUtils;
 
 import java.util.Collections;
 import java.util.HashSet;
@@ -94,17 +94,17 @@ public class AppRTCAudioManager {
     // The proximity sensor should only be activated when there are exactly two
     // available audio devices.
     if (audioDevices.size() == 2
-        && audioDevices.contains(AppRTCAudioManager.AudioDevice.EARPIECE)
+        && audioDevices.contains(AudioDevice.EARPIECE)
         && audioDevices.contains(
-            AppRTCAudioManager.AudioDevice.SPEAKER_PHONE)) {
+            AudioDevice.SPEAKER_PHONE)) {
       if (proximitySensor.sensorReportsNearState()) {
         // Sensor reports that a "handset is being held up to a person's ear",
         // or "something is covering the light sensor".
-        setAudioDevice(AppRTCAudioManager.AudioDevice.EARPIECE);
+        setAudioDevice(AudioDevice.EARPIECE);
       } else {
         // Sensor reports that a "handset is removed from a person's ear", or
         // "the light sensor is no longer covered".
-        setAudioDevice(AppRTCAudioManager.AudioDevice.SPEAKER_PHONE);
+        setAudioDevice(AudioDevice.SPEAKER_PHONE);
       }
     }
   }

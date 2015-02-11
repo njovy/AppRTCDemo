@@ -1,6 +1,6 @@
 /*
  * libjingle
- * Copyright 2014, Google Inc.
+ * Copyright 2014 Google Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -43,10 +43,11 @@ public class SettingsActivity extends Activity
   private String keyprefFps;
   private String keyprefStartBitrateType;
   private String keyprefStartBitrateValue;
+  private String keyPrefVideoCodec;
   private String keyprefHwCodec;
   private String keyprefCpuUsageDetection;
-  private String keyprefSignaling;
   private String keyPrefRoomServerUrl;
+  private String keyPrefDisplayHud;
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -55,9 +56,11 @@ public class SettingsActivity extends Activity
     keyprefFps = getString(R.string.pref_fps_key);
     keyprefStartBitrateType = getString(R.string.pref_startbitrate_key);
     keyprefStartBitrateValue = getString(R.string.pref_startbitratevalue_key);
+    keyPrefVideoCodec = getString(R.string.pref_videocodec_key);
     keyprefHwCodec = getString(R.string.pref_hwcodec_key);
     keyprefCpuUsageDetection = getString(R.string.pref_cpu_usage_detection_key);
     keyPrefRoomServerUrl = getString(R.string.pref_room_server_url_key);
+    keyPrefDisplayHud = getString(R.string.pref_displayhud_key);
 
     // Display the fragment as the main content.
     settingsFragment = new SettingsFragment();
@@ -76,12 +79,13 @@ public class SettingsActivity extends Activity
     updateSummary(sharedPreferences, keyprefResolution);
     updateSummary(sharedPreferences, keyprefFps);
     updateSummary(sharedPreferences, keyprefStartBitrateType);
-    updateSummary(sharedPreferences, keyPrefRoomServerUrl);
     updateSummaryBitrate(sharedPreferences, keyprefStartBitrateValue);
     setBitrateEnable(sharedPreferences);
+    updateSummary(sharedPreferences, keyPrefVideoCodec);
     updateSummaryB(sharedPreferences, keyprefHwCodec);
     updateSummaryB(sharedPreferences, keyprefCpuUsageDetection);
-    updateSummaryB(sharedPreferences, keyprefSignaling);
+    updateSummary(sharedPreferences, keyPrefRoomServerUrl);
+    updateSummaryB(sharedPreferences, keyPrefDisplayHud);
   }
 
   @Override
@@ -98,12 +102,13 @@ public class SettingsActivity extends Activity
     if (key.equals(keyprefResolution)
         || key.equals(keyprefFps)
         || key.equals(keyprefStartBitrateType)
-        || key.equals(keyPrefRoomServerUrl)) {
+        || key.equals(keyPrefRoomServerUrl)
+        || key.equals(keyPrefVideoCodec)) {
       updateSummary(sharedPreferences, key);
     } else if (key.equals(keyprefStartBitrateValue)) {
       updateSummaryBitrate(sharedPreferences, key);
     } else if (key.equals(keyprefCpuUsageDetection)
-        || key.equals(keyprefHwCodec) || key.equals(keyprefSignaling)) {
+        || key.equals(keyprefHwCodec) || key.equals(keyPrefDisplayHud)) {
       updateSummaryB(sharedPreferences, key);
     }
     if (key.equals(keyprefStartBitrateType)) {

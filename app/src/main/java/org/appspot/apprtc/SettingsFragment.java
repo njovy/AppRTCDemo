@@ -1,6 +1,6 @@
 /*
  * libjingle
- * Copyright 2014, Google Inc.
+ * Copyright 2014 Google Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -29,8 +29,6 @@ package org.appspot.apprtc;
 
 import android.os.Bundle;
 import android.preference.PreferenceFragment;
-
-import org.appspot.apprtc.R;
 
 /**
  * Settings fragment for AppRTC.
