@@ -43,7 +43,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.view.Window;
-import android.view.WindowManager;
+import android.view.WindowManager.LayoutParams;
 import android.widget.Toast;
 
 import org.webrtc.IceCandidate;
@@ -66,18 +66,24 @@ public class CallActivity extends Activity
       "org.appspot.apprtc.ROOMID";
   public static final String EXTRA_LOOPBACK =
       "org.appspot.apprtc.LOOPBACK";
-  public static final String EXTRA_HWCODEC =
-      "org.appspot.apprtc.HWCODEC";
-  public static final String EXTRA_VIDEO_BITRATE =
-      "org.appspot.apprtc.VIDEO_BITRATE";
+  public static final String EXTRA_VIDEO_CALL =
+      "org.appspot.apprtc.VIDEO_CALL";
   public static final String EXTRA_VIDEO_WIDTH =
       "org.appspot.apprtc.VIDEO_WIDTH";
   public static final String EXTRA_VIDEO_HEIGHT =
       "org.appspot.apprtc.VIDEO_HEIGHT";
   public static final String EXTRA_VIDEO_FPS =
       "org.appspot.apprtc.VIDEO_FPS";
+  public static final String EXTRA_VIDEO_BITRATE =
+      "org.appspot.apprtc.VIDEO_BITRATE";
   public static final String EXTRA_VIDEOCODEC =
       "org.appspot.apprtc.VIDEOCODEC";
+  public static final String EXTRA_HWCODEC_ENABLED =
+      "org.appspot.apprtc.HWCODEC";
+  public static final String EXTRA_AUDIO_BITRATE =
+      "org.appspot.apprtc.AUDIO_BITRATE";
+  public static final String EXTRA_AUDIOCODEC =
+      "org.appspot.apprtc.AUDIOCODEC";
   public static final String EXTRA_CPUOVERUSE_DETECTION =
       "org.appspot.apprtc.CPUOVERUSE_DETECTION";
   public static final String EXTRA_DISPLAY_HUD =
@@ -118,15 +124,15 @@ public class CallActivity extends Activity
   private boolean activityRunning;
   private RoomConnectionParameters roomConnectionParameters;
   private PeerConnectionParameters peerConnectionParameters;
-  private boolean hwCodecAcceleration;
-  private String videoCodec;
   private boolean iceConnected;
   private boolean isError;
   private boolean callControlFragmentVisible = true;
+  private long callStartedTimeMs = 0;
 
   // Controls
   private GLSurfaceView videoView;
   CallFragment callFragment;
+  HudFragment hudFragment;
 
   @Override
   public void onCreate(Bundle savedInstanceState) {
@@ -137,8 +143,12 @@ public class CallActivity extends Activity
     // Set window styles for fullscreen-window size. Needs to be done before
     // adding content.
     requestWindowFeature(Window.FEATURE_NO_TITLE);
-    getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
-    getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+    getWindow().addFlags(
+        LayoutParams.FLAG_FULLSCREEN
+        | LayoutParams.FLAG_KEEP_SCREEN_ON
+        | LayoutParams.FLAG_DISMISS_KEYGUARD
+        | LayoutParams.FLAG_SHOW_WHEN_LOCKED
+        | LayoutParams.FLAG_TURN_SCREEN_ON);
     getWindow().getDecorView().setSystemUiVisibility(
         View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
         | View.SYSTEM_UI_FLAG_FULLSCREEN
@@ -152,6 +162,7 @@ public class CallActivity extends Activity
     // Create UI controls.
     videoView = (GLSurfaceView) findViewById(R.id.glview_call);
     callFragment = new CallFragment();
+    hudFragment = new HudFragment();
 
     // Create video renderers.
     VideoRendererGui.setView(videoView, new Runnable() {
@@ -194,17 +205,17 @@ public class CallActivity extends Activity
       return;
     }
     boolean loopback = intent.getBooleanExtra(EXTRA_LOOPBACK, false);
-    hwCodecAcceleration = intent.getBooleanExtra(EXTRA_HWCODEC, true);
-    if (intent.hasExtra(EXTRA_VIDEOCODEC)) {
-      videoCodec = intent.getStringExtra(EXTRA_VIDEOCODEC);
-    } else {
-      videoCodec = PeerConnectionClient.VIDEO_CODEC_VP8; // use VP8 by default.
-    }
     peerConnectionParameters = new PeerConnectionParameters(
+        intent.getBooleanExtra(EXTRA_VIDEO_CALL, true),
+        loopback,
         intent.getIntExtra(EXTRA_VIDEO_WIDTH, 0),
         intent.getIntExtra(EXTRA_VIDEO_HEIGHT, 0),
         intent.getIntExtra(EXTRA_VIDEO_FPS, 0),
         intent.getIntExtra(EXTRA_VIDEO_BITRATE, 0),
+        intent.getStringExtra(EXTRA_VIDEOCODEC),
+        intent.getBooleanExtra(EXTRA_HWCODEC_ENABLED, true),
+        intent.getIntExtra(EXTRA_AUDIO_BITRATE, 0),
+        intent.getStringExtra(EXTRA_AUDIOCODEC),
         intent.getBooleanExtra(EXTRA_CPUOVERUSE_DETECTION, true));
     commandLineRun = intent.getBooleanExtra(EXTRA_CMDLINE, false);
     runTimeMs = intent.getIntExtra(EXTRA_RUNTIME, 0);
@@ -214,11 +225,14 @@ public class CallActivity extends Activity
     roomConnectionParameters = new RoomConnectionParameters(
         roomUri.toString(), roomId, loopback);
 
-    // Send intent arguments to fragment.
+    // Send intent arguments to fragments.
     callFragment.setArguments(intent.getExtras());
-    // Activate call fragment and start the call.
-    getFragmentManager().beginTransaction()
-        .add(R.id.call_fragment_container, callFragment).commit();
+    hudFragment.setArguments(intent.getExtras());
+    // Activate call and HUD fragments and start the call.
+    FragmentTransaction ft = getFragmentManager().beginTransaction();
+    ft.add(R.id.call_fragment_container, callFragment);
+    ft.add(R.id.hud_fragment_container, hudFragment);
+    ft.commit();
     startCall();
 
     // For command line execution run connection for <runTimeMs> and exit.
@@ -291,8 +305,10 @@ public class CallActivity extends Activity
     FragmentTransaction ft = getFragmentManager().beginTransaction();
     if (callControlFragmentVisible) {
       ft.show(callFragment);
+      ft.show(hudFragment);
     } else {
       ft.hide(callFragment);
+      ft.hide(hudFragment);
     }
     ft.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE);
     ft.commit();
@@ -319,6 +335,8 @@ public class CallActivity extends Activity
       Log.e(TAG, "AppRTC client is not allocated for a call.");
       return;
     }
+    callStartedTimeMs = System.currentTimeMillis();
+
     // Start room connection.
     logAndToast(getString(R.string.connecting_to,
         roomConnectionParameters.roomUrl));
@@ -343,6 +361,9 @@ public class CallActivity extends Activity
 
   // Should be called from UI thread
   private void callConnected() {
+    final long delta = System.currentTimeMillis() - callStartedTimeMs;
+    Log.i(TAG, "Call connected: delay=" + delta + "ms");
+
     // Update video view.
     updateVideoView();
     // Enable statistics callback.
@@ -360,10 +381,12 @@ public class CallActivity extends Activity
       @Override
       public void run() {
         if (peerConnectionClient == null) {
+          final long delta = System.currentTimeMillis() - callStartedTimeMs;
+          Log.d(TAG, "Creating peer connection factory, delay=" + delta + "ms");
           peerConnectionClient = new PeerConnectionClient();
           peerConnectionClient.createPeerConnectionFactory(CallActivity.this,
-              videoCodec, hwCodecAcceleration,
-              VideoRendererGui.getEGLContext(), CallActivity.this);
+              VideoRendererGui.getEGLContext(), peerConnectionParameters,
+              CallActivity.this);
         }
         if (signalingParameters != null) {
           Log.w(TAG, "EGL context is ready after room connection.");
@@ -375,6 +398,7 @@ public class CallActivity extends Activity
 
   // Disconnect from remote resources, dispose of local resources, and exit.
   private void disconnect() {
+    activityRunning = false;
     if (appRtcClient != null) {
       appRtcClient.disconnectFromRoom();
       appRtcClient = null;
@@ -424,19 +448,32 @@ public class CallActivity extends Activity
     logToast.show();
   }
 
+  private void reportError(final String description) {
+    runOnUiThread(new Runnable() {
+      @Override
+      public void run() {
+        if (!isError) {
+          isError = true;
+          disconnectWithErrorMessage(description);
+        }
+      }
+    });
+  }
+
   // -----Implementation of AppRTCClient.AppRTCSignalingEvents ---------------
   // All callbacks are invoked from websocket signaling looper thread and
   // are routed to UI thread.
   private void onConnectedToRoomInternal(final SignalingParameters params) {
+    final long delta = System.currentTimeMillis() - callStartedTimeMs;
+
     signalingParameters = params;
     if (peerConnectionClient == null) {
       Log.w(TAG, "Room is connected, but EGL context is not ready yet.");
       return;
     }
-    logAndToast("Creating peer connection...");
+    logAndToast("Creating peer connection, delay=" + delta + "ms");
     peerConnectionClient.createPeerConnection(
-        localRender, remoteRender,
-        signalingParameters, peerConnectionParameters);
+        localRender, remoteRender, signalingParameters);
 
     if (signalingParameters.initiator) {
       logAndToast("Creating OFFER...");
@@ -472,6 +509,7 @@ public class CallActivity extends Activity
 
   @Override
   public void onRemoteDescription(final SessionDescription sdp) {
+    final long delta = System.currentTimeMillis() - callStartedTimeMs;
     runOnUiThread(new Runnable() {
       @Override
       public void run() {
@@ -479,7 +517,7 @@ public class CallActivity extends Activity
           Log.e(TAG, "Received remote SDP for non-initilized peer connection.");
           return;
         }
-        logAndToast("Received remote " + sdp.type + " ...");
+        logAndToast("Received remote " + sdp.type + ", delay=" + delta + "ms");
         peerConnectionClient.setRemoteDescription(sdp);
         if (!signalingParameters.initiator) {
           logAndToast("Creating ANSWER...");
@@ -519,15 +557,7 @@ public class CallActivity extends Activity
 
   @Override
   public void onChannelError(final String description) {
-    runOnUiThread(new Runnable() {
-      @Override
-      public void run() {
-        if (!isError) {
-          isError = true;
-          disconnectWithErrorMessage(description);
-        }
-      }
-    });
+    reportError(description);
   }
 
   // -----Implementation of PeerConnectionClient.PeerConnectionEvents.---------
@@ -536,11 +566,12 @@ public class CallActivity extends Activity
   // are routed to UI thread.
   @Override
   public void onLocalDescription(final SessionDescription sdp) {
+    final long delta = System.currentTimeMillis() - callStartedTimeMs;
     runOnUiThread(new Runnable() {
       @Override
       public void run() {
         if (appRtcClient != null) {
-          logAndToast("Sending " + sdp.type + " ...");
+          logAndToast("Sending " + sdp.type + ", delay=" + delta + "ms");
           if (signalingParameters.initiator) {
             appRtcClient.sendOfferSdp(sdp);
           } else {
@@ -565,10 +596,11 @@ public class CallActivity extends Activity
 
   @Override
   public void onIceConnected() {
+    final long delta = System.currentTimeMillis() - callStartedTimeMs;
     runOnUiThread(new Runnable() {
       @Override
       public void run() {
-        logAndToast("ICE connected");
+        logAndToast("ICE connected, delay=" + delta + "ms");
         iceConnected = true;
         callConnected();
       }
@@ -597,7 +629,7 @@ public class CallActivity extends Activity
       @Override
       public void run() {
         if (!isError && iceConnected) {
-          callFragment.updateEncoderStatistics(reports);
+          hudFragment.updateEncoderStatistics(reports);
         }
       }
     });
@@ -605,14 +637,6 @@ public class CallActivity extends Activity
 
   @Override
   public void onPeerConnectionError(final String description) {
-    runOnUiThread(new Runnable() {
-      @Override
-      public void run() {
-        if (!isError) {
-          isError = true;
-          disconnectWithErrorMessage(description);
-        }
-      }
-    });
+    reportError(description);
   }
 }
