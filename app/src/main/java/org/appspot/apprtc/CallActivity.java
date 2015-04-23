@@ -317,16 +317,16 @@ public class CallActivity extends Activity
   private void updateVideoView() {
     VideoRendererGui.update(remoteRender,
         REMOTE_X, REMOTE_Y,
-        REMOTE_WIDTH, REMOTE_HEIGHT, scalingType);
+        REMOTE_WIDTH, REMOTE_HEIGHT, scalingType, false);
     if (iceConnected) {
       VideoRendererGui.update(localRender,
           LOCAL_X_CONNECTED, LOCAL_Y_CONNECTED,
           LOCAL_WIDTH_CONNECTED, LOCAL_HEIGHT_CONNECTED,
-          ScalingType.SCALE_ASPECT_FIT);
+          ScalingType.SCALE_ASPECT_FIT, true);
     } else {
       VideoRendererGui.update(localRender,
           LOCAL_X_CONNECTING, LOCAL_Y_CONNECTING,
-          LOCAL_WIDTH_CONNECTING, LOCAL_HEIGHT_CONNECTING, scalingType);
+          LOCAL_WIDTH_CONNECTING, LOCAL_HEIGHT_CONNECTING, scalingType, true);
     }
   }
 
@@ -383,7 +383,7 @@ public class CallActivity extends Activity
         if (peerConnectionClient == null) {
           final long delta = System.currentTimeMillis() - callStartedTimeMs;
           Log.d(TAG, "Creating peer connection factory, delay=" + delta + "ms");
-          peerConnectionClient = new PeerConnectionClient();
+          peerConnectionClient = PeerConnectionClient.getInstance();
           peerConnectionClient.createPeerConnectionFactory(CallActivity.this,
               VideoRendererGui.getEGLContext(), peerConnectionParameters,
               CallActivity.this);
