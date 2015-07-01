@@ -37,6 +37,7 @@ import android.app.AlertDialog;
 import android.app.FragmentTransaction;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.opengl.GLSurfaceView;
 import android.os.Bundle;
@@ -84,6 +85,8 @@ public class CallActivity extends Activity
       "org.appspot.apprtc.AUDIO_BITRATE";
   public static final String EXTRA_AUDIOCODEC =
       "org.appspot.apprtc.AUDIOCODEC";
+  public static final String EXTRA_NOAUDIOPROCESSING_ENABLED =
+      "org.appspot.apprtc.NOAUDIOPROCESSING";
   public static final String EXTRA_CPUOVERUSE_DETECTION =
       "org.appspot.apprtc.CPUOVERUSE_DETECTION";
   public static final String EXTRA_DISPLAY_HUD =
@@ -93,6 +96,14 @@ public class CallActivity extends Activity
   public static final String EXTRA_RUNTIME =
       "org.appspot.apprtc.RUNTIME";
   private static final String TAG = "CallRTCClient";
+
+  // List of mandatory application permissions.
+  private static final String[] MANDATORY_PERMISSIONS = {
+    "android.permission.MODIFY_AUDIO_SETTINGS",
+    "android.permission.RECORD_AUDIO",
+    "android.permission.INTERNET"
+  };
+
   // Peer connection statistics callback period in ms.
   private static final int STAT_CALLBACK_PERIOD = 1000;
   // Local preview screen position before call is connected.
@@ -186,6 +197,16 @@ public class CallActivity extends Activity
       }
     });
 
+    // Check for mandatory permissions.
+    for (String permission : MANDATORY_PERMISSIONS) {
+      if (checkCallingOrSelfPermission(permission) != PackageManager.PERMISSION_GRANTED) {
+        logAndToast("Permission " + permission + " is not granted");
+        setResult(RESULT_CANCELED);
+        finish();
+        return;
+      }
+    }
+
     // Get Intent parameters.
     final Intent intent = getIntent();
     Uri roomUri = intent.getData();
@@ -216,6 +237,7 @@ public class CallActivity extends Activity
         intent.getBooleanExtra(EXTRA_HWCODEC_ENABLED, true),
         intent.getIntExtra(EXTRA_AUDIO_BITRATE, 0),
         intent.getStringExtra(EXTRA_AUDIOCODEC),
+        intent.getBooleanExtra(EXTRA_NOAUDIOPROCESSING_ENABLED, false),
         intent.getBooleanExtra(EXTRA_CPUOVERUSE_DETECTION, true));
     commandLineRun = intent.getBooleanExtra(EXTRA_CMDLINE, false);
     runTimeMs = intent.getIntExtra(EXTRA_RUNTIME, 0);

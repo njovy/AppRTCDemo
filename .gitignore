@@ -1,7 +1,13 @@
-.gradle
-/local.properties
-/.idea/workspace.xml
-/.idea/libraries
-.DS_Store
-/build
+# IntelliJ IDEA
+.idea
 *.iml
+
+# Gradle
+.gradle
+gradlew.bat
+build
+local.properties
+reports
+
+# Mac OS
+.DS_Store

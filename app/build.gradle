@@ -13,7 +13,7 @@ android {
     defaultConfig {
         applicationId "org.appspot.apprtc"
         minSdkVersion 14
-        targetSdkVersion 21
+        targetSdkVersion 22
 
         versionCode 9181
         versionName "r9181"
