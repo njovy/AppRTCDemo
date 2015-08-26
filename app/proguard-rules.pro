@@ -15,3 +15,20 @@
 #-keepclassmembers class fqcn.of.javascript.interface.for.webview {
 #   public *;
 #}
+
+-dontwarn android.support.**
+
+
+-keep class org.webrtc.**  { *; }
+
+
+
+-keep class org.appspot.apprtc.**  { *; }
+
+
+
+-keep class de.tavendo.autobahn.**  { *; }
+
+
+
+-keepclasseswithmembernames class * { native <methods>; }

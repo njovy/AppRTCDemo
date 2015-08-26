@@ -1,40 +1,40 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 23
-    buildToolsVersion "23.0.0"
+  compileSdkVersion 23
+  buildToolsVersion "23.0.0"
 
-    sourceSets.main {
-        jniLibs.srcDir 'libs'
-        jni.srcDirs = [] //disable automatic ndk-build call
+  sourceSets.main {
+    jniLibs.srcDir 'libs'
+    jni.srcDirs = [] //disable automatic ndk-build call
+  }
+
+
+  defaultConfig {
+    applicationId "org.appspot.apprtc"
+    minSdkVersion 14
+    targetSdkVersion 23
+
+    versionCode 9784
+    versionName "r9784"
+
+    testApplicationId "org.appspot.apprtc.test"
+    testInstrumentationRunner "android.test.InstrumentationTestRunner"
+  }
+
+  buildTypes {
+    release {
+      minifyEnabled true
+      proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
     }
+  }
 
-
-    defaultConfig {
-        applicationId "org.appspot.apprtc"
-        minSdkVersion 14
-        targetSdkVersion 23
-
-        versionCode 9784
-        versionName "r9784"
-
-        testApplicationId "org.appspot.apprtc.test"
-        testInstrumentationRunner "android.test.InstrumentationTestRunner"
-    }
-
-    buildTypes {
-        release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.txt'
-        }
-    }
-
-    lintOptions {
-        abortOnError false
-    }
+  lintOptions {
+    abortOnError false
+  }
 }
 
 dependencies {
-    compile files('libs/autobanh.jar')
-    compile files('libs/libjingle_peerconnection.jar')
+  compile files('libs/autobanh.jar')
+  compile files('libs/libjingle_peerconnection.jar')
 }
