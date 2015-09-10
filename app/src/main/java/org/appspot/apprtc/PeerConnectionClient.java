@@ -216,7 +216,6 @@ public class PeerConnectionClient {
 
   public void createPeerConnectionFactory(
       final Context context,
-      final EGLContext renderEGLContext,
       final PeerConnectionParameters peerConnectionParameters,
       final PeerConnectionEvents events) {
     this.peerConnectionParameters = peerConnectionParameters;
@@ -241,12 +240,13 @@ public class PeerConnectionClient {
     executor.execute(new Runnable() {
       @Override
       public void run() {
-        createPeerConnectionFactoryInternal(context, renderEGLContext);
+        createPeerConnectionFactoryInternal(context);
       }
     });
   }
 
   public void createPeerConnection(
+      final EGLContext renderEGLContext,
       final VideoRenderer.Callbacks localRender,
       final VideoRenderer.Callbacks remoteRender,
       final SignalingParameters signalingParameters) {
@@ -261,7 +261,7 @@ public class PeerConnectionClient {
       @Override
       public void run() {
         createMediaConstraintsInternal();
-        createPeerConnectionInternal();
+        createPeerConnectionInternal(renderEGLContext);
       }
     });
   }
@@ -279,11 +279,9 @@ public class PeerConnectionClient {
     return videoCallEnabled;
   }
 
-  private void createPeerConnectionFactoryInternal(
-      Context context, EGLContext renderEGLContext) {
-    Log.d(TAG, "Create peer connection factory with EGLContext "
-        + renderEGLContext + ". Use video: "
-        + peerConnectionParameters.videoCallEnabled);
+  private void createPeerConnectionFactoryInternal(Context context) {
+    Log.d(TAG, "Create peer connection factory. Use video: " +
+        peerConnectionParameters.videoCallEnabled);
     isError = false;
     // Check if VP9 is used by default.
     if (videoCallEnabled && peerConnectionParameters.videoCodec != null
@@ -304,9 +302,8 @@ public class PeerConnectionClient {
         && peerConnectionParameters.audioCodec.equals(AUDIO_CODEC_ISAC)) {
       preferIsac = true;
     }
-    if (!PeerConnectionFactory.initializeAndroidGlobals(
-        context, true, true,
-        peerConnectionParameters.videoCodecHwAcceleration, renderEGLContext)) {
+    if (!PeerConnectionFactory.initializeAndroidGlobals(context, true, true,
+        peerConnectionParameters.videoCodecHwAcceleration)) {
       events.onPeerConnectionError("Failed to initializeAndroidGlobals");
     }
     factory = new PeerConnectionFactory();
@@ -323,10 +320,10 @@ public class PeerConnectionClient {
     // Enable DTLS for normal calls and disable for loopback calls.
     if (peerConnectionParameters.loopback) {
       pcConstraints.optional.add(
-          new KeyValuePair(DTLS_SRTP_KEY_AGREEMENT_CONSTRAINT, "false"));
+          new MediaConstraints.KeyValuePair(DTLS_SRTP_KEY_AGREEMENT_CONSTRAINT, "false"));
     } else {
       pcConstraints.optional.add(
-          new KeyValuePair(DTLS_SRTP_KEY_AGREEMENT_CONSTRAINT, "true"));
+          new MediaConstraints.KeyValuePair(DTLS_SRTP_KEY_AGREEMENT_CONSTRAINT, "true"));
     }
 
     // Check if there is a camera on device and disable video call if not.
@@ -380,39 +377,45 @@ public class PeerConnectionClient {
     // added for audio performance measurements
     if (peerConnectionParameters.noAudioProcessing) {
       Log.d(TAG, "Disabling audio processing");
-      audioConstraints.mandatory.add(new KeyValuePair(
+      audioConstraints.mandatory.add(new MediaConstraints.KeyValuePair(
             AUDIO_ECHO_CANCELLATION_CONSTRAINT, "false"));
-      audioConstraints.mandatory.add(new KeyValuePair(
+      audioConstraints.mandatory.add(new MediaConstraints.KeyValuePair(
             AUDIO_AUTO_GAIN_CONTROL_CONSTRAINT, "false"));
-      audioConstraints.mandatory.add(new KeyValuePair(
+      audioConstraints.mandatory.add(new MediaConstraints.KeyValuePair(
             AUDIO_HIGH_PASS_FILTER_CONSTRAINT, "false"));
-      audioConstraints.mandatory.add(new KeyValuePair(
+      audioConstraints.mandatory.add(new MediaConstraints.KeyValuePair(
            AUDIO_NOISE_SUPPRESSION_CONSTRAINT , "false"));
     }
     // Create SDP constraints.
     sdpMediaConstraints = new MediaConstraints();
-    sdpMediaConstraints.mandatory.add(new KeyValuePair(
+    sdpMediaConstraints.mandatory.add(new MediaConstraints.KeyValuePair(
         "OfferToReceiveAudio", "true"));
     if (videoCallEnabled || peerConnectionParameters.loopback) {
-      sdpMediaConstraints.mandatory.add(new KeyValuePair(
+      sdpMediaConstraints.mandatory.add(new MediaConstraints.KeyValuePair(
           "OfferToReceiveVideo", "true"));
     } else {
-      sdpMediaConstraints.mandatory.add(new KeyValuePair(
+      sdpMediaConstraints.mandatory.add(new MediaConstraints.KeyValuePair(
           "OfferToReceiveVideo", "false"));
     }
   }
 
-  private void createPeerConnectionInternal() {
+  private void createPeerConnectionInternal(EGLContext renderEGLContext) {
     if (factory == null || isError) {
       Log.e(TAG, "Peerconnection factory is not created");
       return;
     }
-    Log.d(TAG, "Create peer connection");
+    Log.d(TAG, "Create peer connection.");
+
     Log.d(TAG, "PCConstraints: " + pcConstraints.toString());
     if (videoConstraints != null) {
       Log.d(TAG, "VideoConstraints: " + videoConstraints.toString());
     }
     queuedRemoteCandidates = new LinkedList<IceCandidate>();
+
+    if (videoCallEnabled) {
+      Log.d(TAG, "EGLContext: " + renderEGLContext);
+      factory.setVideoHwAccelerationOptions(renderEGLContext);
+    }
 
     PeerConnection.RTCConfiguration rtcConfig =
         new PeerConnection.RTCConfiguration(signalingParameters.iceServers);
@@ -421,6 +424,8 @@ public class PeerConnectionClient {
     rtcConfig.tcpCandidatePolicy = PeerConnection.TcpCandidatePolicy.DISABLED;
     rtcConfig.bundlePolicy = PeerConnection.BundlePolicy.MAXBUNDLE;
     rtcConfig.rtcpMuxPolicy = PeerConnection.RtcpMuxPolicy.REQUIRE;
+    // Use ECDSA encryption.
+    rtcConfig.keyType = PeerConnection.KeyType.ECDSA;
 
     peerConnection = factory.createPeerConnection(
         rtcConfig, pcConstraints, pcObserver);
@@ -859,7 +864,7 @@ public class PeerConnectionClient {
 
     @Override
     public void onIceConnectionChange(
-        final IceConnectionState newState) {
+        final PeerConnection.IceConnectionState newState) {
       executor.execute(new Runnable() {
         @Override
         public void run() {

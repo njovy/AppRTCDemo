@@ -1,4 +1,4 @@
 # AppRTCDemo
 
-Android Studio project for AppRTCDemo of WebRTC project that I built on 8/31/2015. The revision number of this build is 9814.
-https://chromium.googlesource.com/external/webrtc/+/a6cba3ab5c899339d577adf1824e0e007c12863e
+Android Studio project for AppRTCDemo of WebRTC project. The revision number of this build is 9913.
+https://chromium.googlesource.com/external/webrtc/+/0de8ff488d92e0bc6b7b65662898ff5e955cda93
