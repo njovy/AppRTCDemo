@@ -59,6 +59,8 @@ public class CallActivity extends Activity
       "org.appspot.apprtc.VIDEO_HEIGHT";
   public static final String EXTRA_VIDEO_FPS =
       "org.appspot.apprtc.VIDEO_FPS";
+  public static final String EXTRA_VIDEO_CAPTUREQUALITYSLIDER_ENABLED =
+      "org.appsopt.apprtc.VIDEO_CAPTUREQUALITYSLIDER";
   public static final String EXTRA_VIDEO_BITRATE =
       "org.appspot.apprtc.VIDEO_BITRATE";
   public static final String EXTRA_VIDEOCODEC =
@@ -90,7 +92,7 @@ public class CallActivity extends Activity
 
   // Peer connection statistics callback period in ms.
   private static final int STAT_CALLBACK_PERIOD = 1000;
-  // Local preview screen position before callP is connected.
+  // Local preview screen position before call is connected.
   private static final int LOCAL_X_CONNECTING = 0;
   private static final int LOCAL_Y_CONNECTING = 0;
   private static final int LOCAL_WIDTH_CONNECTING = 100;
@@ -302,6 +304,13 @@ public class CallActivity extends Activity
   public void onVideoScalingSwitch(ScalingType scalingType) {
     this.scalingType = scalingType;
     updateVideoView();
+  }
+
+  @Override
+  public void onCaptureFormatChange(int width, int height, int framerate) {
+    if (peerConnectionClient != null) {
+      peerConnectionClient.changeCaptureFormat(width, height, framerate);
+    }
   }
 
   // Helper functions.
