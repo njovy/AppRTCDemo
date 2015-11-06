@@ -11,7 +11,6 @@
 package org.appspot.apprtc;
 
 import android.content.Context;
-import android.opengl.EGLContext;
 import android.util.Log;
 
 import org.appspot.apprtc.AppRTCClient.SignalingParameters;
@@ -43,6 +42,8 @@ import java.util.TimerTask;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.microedition.khronos.egl.EGLContext;
+
 /**
  * Peer connection client implementation.
  *
@@ -55,8 +56,9 @@ public class PeerConnectionClient {
   public static final String AUDIO_TRACK_ID = "ARDAMSa0";
   private static final String TAG = "PCRTCClient";
   private static final String FIELD_TRIAL_VP9 = "WebRTC-SupportVP9/Enabled/";
-  private static final String FIELD_TRIAL_AUTOMATIC_RESIZE =
-      "WebRTC-MediaCodecVideoEncoder-AutomaticResize/Enabled/";
+  //private static final String FIELD_TRIAL_AUTOMATIC_RESIZE =
+  //    "WebRTC-MediaCodecVideoEncoder-AutomaticResize/Enabled/";
+  private static final String FIELD_TRIAL_AUTOMATIC_RESIZE =null;
   private static final String VIDEO_CODEC_VP8 = "VP8";
   private static final String VIDEO_CODEC_VP9 = "VP9";
   private static final String VIDEO_CODEC_H264 = "H264";
@@ -289,10 +291,10 @@ public class PeerConnectionClient {
     // Initialize field trials.
     String field_trials = FIELD_TRIAL_AUTOMATIC_RESIZE;
     // Check if VP9 is used by default.
-    if (videoCallEnabled && peerConnectionParameters.videoCodec != null
-        && peerConnectionParameters.videoCodec.equals(VIDEO_CODEC_VP9)) {
-      field_trials += FIELD_TRIAL_VP9;
-    }
+    //if (videoCallEnabled && peerConnectionParameters.videoCodec != null
+    //    && peerConnectionParameters.videoCodec.equals(VIDEO_CODEC_VP9)) {
+    //  field_trials += FIELD_TRIAL_VP9;
+    //}
     PeerConnectionFactory.initializeFieldTrials(field_trials);
 
     // Check if H.264 is used by default.
