@@ -134,23 +134,27 @@ public class RoomParametersFetcher {
 
       LinkedList<PeerConnection.IceServer> iceServers =
           iceServersFromPCConfigJSON(roomJson.getString("pc_config"));
-      boolean isTurnPresent = false;
-      for (PeerConnection.IceServer server : iceServers) {
-        Log.d(TAG, "IceServer: " + server);
-        if (server.uri.startsWith("turn:")) {
-          isTurnPresent = true;
-          break;
-        }
-      }
-      // Request TURN servers.
-      if (!isTurnPresent) {
-        LinkedList<PeerConnection.IceServer> turnServers =
-            requestTurnServers(roomJson.getString("turn_url"));
-        for (PeerConnection.IceServer turnServer : turnServers) {
-          Log.d(TAG, "TurnServer: " + turnServer);
-          iceServers.add(turnServer);
-        }
-      }
+      // Uncomment here if computeengineondemand.appspot.com is up
+      //boolean isTurnPresent = false;
+      //for (PeerConnection.IceServer server : iceServers) {
+      //  Log.d(TAG, "IceServer: " + server);
+      //  if (server.uri.startsWith("turn:")) {
+      //    isTurnPresent = true;
+      //    break;
+      //  }
+      //}
+      //// Request TURN servers.
+      //if (!isTurnPresent) {
+      //  LinkedList<PeerConnection.IceServer> turnServers =
+      //      requestTurnServers(roomJson.getString("turn_url"));
+      //  for (PeerConnection.IceServer turnServer : turnServers) {
+      //    Log.d(TAG, "TurnServer: " + turnServer);
+      //    iceServers.add(turnServer);
+      //  }
+      //}
+      // set STUN servers since computeengineondemand.appspot.com doesn't work
+      iceServers.add(new PeerConnection.IceServer("stun:stun.l.google.com:19302"));
+      iceServers.add(new PeerConnection.IceServer("stun:stun2.l.google.com:19302"));
 
       SignalingParameters params = new SignalingParameters(
           iceServers, initiator,
@@ -160,7 +164,7 @@ public class RoomParametersFetcher {
     } catch (JSONException e) {
       events.onSignalingParametersError(
           "Room JSON parsing error: " + e.toString());
-    } catch (IOException e) {
+    } catch (Exception e) {
       events.onSignalingParametersError("Room IO error: " + e.toString());
     }
   }
