@@ -34,6 +34,7 @@ import org.webrtc.VideoCapturerAndroid;
 import org.webrtc.VideoRenderer;
 import org.webrtc.VideoSource;
 import org.webrtc.VideoTrack;
+import org.webrtc.voiceengine.WebRtcAudioManager;
 
 import java.util.EnumSet;
 import java.util.LinkedList;
@@ -55,7 +56,6 @@ public class PeerConnectionClient {
   public static final String VIDEO_TRACK_ID = "ARDAMSv0";
   public static final String AUDIO_TRACK_ID = "ARDAMSa0";
   private static final String TAG = "PCRTCClient";
-  private static final String FIELD_TRIAL_VP9 = "WebRTC-SupportVP9/Enabled/";
   private static final String FIELD_TRIAL_AUTOMATIC_RESIZE =
       "WebRTC-MediaCodecVideoEncoder-AutomaticResize/Enabled/";
   private static final String VIDEO_CODEC_VP8 = "VP8";
@@ -94,7 +94,7 @@ public class PeerConnectionClient {
   private VideoSource videoSource;
   private boolean videoCallEnabled;
   private boolean preferIsac;
-  private boolean preferH264;
+  private String preferredVideoCodec;
   private boolean videoSourceStopped;
   private boolean isError;
   private Timer statsTimer;
@@ -136,14 +136,14 @@ public class PeerConnectionClient {
     public final int audioStartBitrate;
     public final String audioCodec;
     public final boolean noAudioProcessing;
-    public final boolean cpuOveruseDetection;
+    public final boolean useOpenSLES;
 
     public PeerConnectionParameters(
         boolean videoCallEnabled, boolean loopback,
         int videoWidth, int videoHeight, int videoFps, int videoStartBitrate,
         String videoCodec, boolean videoCodecHwAcceleration,
         int audioStartBitrate, String audioCodec,
-        boolean noAudioProcessing, boolean cpuOveruseDetection) {
+        boolean noAudioProcessing, boolean useOpenSLES) {
       this.videoCallEnabled = videoCallEnabled;
       this.loopback = loopback;
       this.videoWidth = videoWidth;
@@ -155,7 +155,7 @@ public class PeerConnectionClient {
       this.audioStartBitrate = audioStartBitrate;
       this.audioCodec = audioCodec;
       this.noAudioProcessing = noAudioProcessing;
-      this.cpuOveruseDetection = cpuOveruseDetection;
+      this.useOpenSLES = useOpenSLES;
     }
   }
 
@@ -228,7 +228,6 @@ public class PeerConnectionClient {
     factory = null;
     peerConnection = null;
     preferIsac = false;
-    preferH264 = false;
     videoSourceStopped = false;
     isError = false;
     queuedRemoteCandidates = null;
@@ -288,26 +287,36 @@ public class PeerConnectionClient {
     isError = false;
 
     // Initialize field trials.
-    String field_trials = FIELD_TRIAL_AUTOMATIC_RESIZE;
-    // Check if VP9 is used by default.
-    if (videoCallEnabled && peerConnectionParameters.videoCodec != null
-        && peerConnectionParameters.videoCodec.equals(VIDEO_CODEC_VP9)) {
-      field_trials += FIELD_TRIAL_VP9;
-    }
-    PeerConnectionFactory.initializeFieldTrials(field_trials);
+    PeerConnectionFactory.initializeFieldTrials(FIELD_TRIAL_AUTOMATIC_RESIZE);
 
-    // Check if H.264 is used by default.
-    preferH264 = false;
-    if (videoCallEnabled && peerConnectionParameters.videoCodec != null
-        && peerConnectionParameters.videoCodec.equals(VIDEO_CODEC_H264)) {
-      preferH264 = true;
+    // Check preferred video codec.
+    preferredVideoCodec = VIDEO_CODEC_VP8;
+    if (videoCallEnabled && peerConnectionParameters.videoCodec != null) {
+      if (peerConnectionParameters.videoCodec.equals(VIDEO_CODEC_VP9)) {
+        preferredVideoCodec = VIDEO_CODEC_VP9;
+      } else if (peerConnectionParameters.videoCodec.equals(VIDEO_CODEC_H264)) {
+        preferredVideoCodec = VIDEO_CODEC_H264;
+      }
     }
+    Log.d(TAG, "Pereferred video codec: " + preferredVideoCodec);
+
     // Check if ISAC is used by default.
     preferIsac = false;
     if (peerConnectionParameters.audioCodec != null
         && peerConnectionParameters.audioCodec.equals(AUDIO_CODEC_ISAC)) {
       preferIsac = true;
     }
+
+    // Enable/disable OpenSL ES playback.
+    if (!peerConnectionParameters.useOpenSLES) {
+      Log.d(TAG, "Disable OpenSL ES audio even if device supports it");
+      WebRtcAudioManager.setBlacklistDeviceForOpenSLESUsage(true /* enable */);
+    } else {
+      Log.d(TAG, "Allow OpenSL ES audio if device supports it");
+      WebRtcAudioManager.setBlacklistDeviceForOpenSLESUsage(false);
+    }
+
+    // Create peer connection factory.
     if (!PeerConnectionFactory.initializeAndroidGlobals(context, true, true,
         peerConnectionParameters.videoCodecHwAcceleration)) {
       events.onPeerConnectionError("Failed to initializeAndroidGlobals");
@@ -623,8 +632,8 @@ public class PeerConnectionClient {
         if (preferIsac) {
           sdpDescription = preferCodec(sdpDescription, AUDIO_CODEC_ISAC, true);
         }
-        if (videoCallEnabled && preferH264) {
-          sdpDescription = preferCodec(sdpDescription, VIDEO_CODEC_H264, false);
+        if (videoCallEnabled) {
+          sdpDescription = preferCodec(sdpDescription, preferredVideoCodec, false);
         }
         if (videoCallEnabled && peerConnectionParameters.videoStartBitrate > 0) {
           sdpDescription = setStartBitrate(VIDEO_CODEC_VP8, true,
@@ -972,8 +981,8 @@ public class PeerConnectionClient {
       if (preferIsac) {
         sdpDescription = preferCodec(sdpDescription, AUDIO_CODEC_ISAC, true);
       }
-      if (videoCallEnabled && preferH264) {
-        sdpDescription = preferCodec(sdpDescription, VIDEO_CODEC_H264, false);
+      if (videoCallEnabled) {
+        sdpDescription = preferCodec(sdpDescription, preferredVideoCodec, false);
       }
       final SessionDescription sdp = new SessionDescription(
           origSdp.type, sdpDescription);
