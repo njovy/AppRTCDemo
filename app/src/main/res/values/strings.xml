@@ -71,6 +71,11 @@
     <string name="pref_hwcodec_dlg">Use hardware accelerated video codec (if available).</string>
     <string name="pref_hwcodec_default">true</string>
 
+    <string name="pref_capturetotexture_key">capturetotexture_preference</string>
+    <string name="pref_capturetotexture_title">Video capture to surface texture.</string>
+    <string name="pref_capturetotexture_dlg">Capture video to textures (if available).</string>
+    <string name="pref_capturetotexture_default">false</string>
+
     <string name="pref_value_enabled">Enabled</string>
     <string name="pref_value_disabled">Disabled</string>
 
@@ -97,6 +102,11 @@
     <string name="pref_noaudioprocessing_dlg">Disable audio processing pipeline.</string>
     <string name="pref_noaudioprocessing_default">false</string>
 
+    <string name="pref_aecdump_key">aecdump_preference</string>
+    <string name="pref_aecdump_title">Create aecdump.</string>
+    <string name="pref_aecdump_dlg">Enable diagnostic audio recordings.</string>
+    <string name="pref_aecdump_default">false</string>
+
     <string name="pref_opensles_key">opensles_preference</string>
     <string name="pref_opensles_title">Use OpenSL ES for audio playback.</string>
     <string name="pref_opensles_dlg">Use OpenSL ES for audio playback.</string>
@@ -114,5 +124,10 @@
     <string name="pref_displayhud_title">Display call statistics.</string>
     <string name="pref_displayhud_dlg">Display call statistics.</string>
     <string name="pref_displayhud_default" translatable="false">false</string>
+
+    <string name="pref_tracing_key">tracing_preference</string>
+    <string name="pref_tracing_title">Debug performance tracing.</string>
+    <string name="pref_tracing_dlg">Debug performance tracing.</string>
+    <string name="pref_tracing_default" translatable="false">false</string>
 
 </resources>

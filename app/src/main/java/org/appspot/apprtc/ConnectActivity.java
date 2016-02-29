@@ -65,9 +65,12 @@ public class ConnectActivity extends Activity {
   private String keyprefAudioBitrateValue;
   private String keyprefAudioCodec;
   private String keyprefHwCodecAcceleration;
+  private String keyprefCaptureToTexture;
   private String keyprefNoAudioProcessingPipeline;
+  private String keyprefAecDump;
   private String keyprefOpenSLES;
   private String keyprefDisplayHud;
+  private String keyprefTracing;
   private String keyprefRoomServerUrl;
   private String keyprefRoom;
   private String keyprefRoomList;
@@ -89,12 +92,15 @@ public class ConnectActivity extends Activity {
     keyprefVideoBitrateValue = getString(R.string.pref_startvideobitratevalue_key);
     keyprefVideoCodec = getString(R.string.pref_videocodec_key);
     keyprefHwCodecAcceleration = getString(R.string.pref_hwcodec_key);
+    keyprefCaptureToTexture = getString(R.string.pref_capturetotexture_key);
     keyprefAudioBitrateType = getString(R.string.pref_startaudiobitrate_key);
     keyprefAudioBitrateValue = getString(R.string.pref_startaudiobitratevalue_key);
     keyprefAudioCodec = getString(R.string.pref_audiocodec_key);
     keyprefNoAudioProcessingPipeline = getString(R.string.pref_noaudioprocessing_key);
+    keyprefAecDump = getString(R.string.pref_aecdump_key);
     keyprefOpenSLES = getString(R.string.pref_opensles_key);
     keyprefDisplayHud = getString(R.string.pref_displayhud_key);
+    keyprefTracing = getString(R.string.pref_tracing_key);
     keyprefRoomServerUrl = getString(R.string.pref_room_server_url_key);
     keyprefRoom = getString(R.string.pref_room_key);
     keyprefRoomList = getString(R.string.pref_room_list_key);
@@ -253,10 +259,19 @@ public class ConnectActivity extends Activity {
     boolean hwCodec = sharedPref.getBoolean(keyprefHwCodecAcceleration,
         Boolean.valueOf(getString(R.string.pref_hwcodec_default)));
 
+    // Check Capture to texture.
+    boolean captureToTexture = sharedPref.getBoolean(keyprefCaptureToTexture,
+        Boolean.valueOf(getString(R.string.pref_capturetotexture_default)));
+
     // Check Disable Audio Processing flag.
     boolean noAudioProcessing = sharedPref.getBoolean(
         keyprefNoAudioProcessingPipeline,
         Boolean.valueOf(getString(R.string.pref_noaudioprocessing_default)));
+
+    // Check Disable Audio Processing flag.
+    boolean aecDump = sharedPref.getBoolean(
+        keyprefAecDump,
+        Boolean.valueOf(getString(R.string.pref_aecdump_default)));
 
     // Check OpenSL ES enabled flag.
     boolean useOpenSLES = sharedPref.getBoolean(
@@ -322,6 +337,9 @@ public class ConnectActivity extends Activity {
     boolean displayHud = sharedPref.getBoolean(keyprefDisplayHud,
         Boolean.valueOf(getString(R.string.pref_displayhud_default)));
 
+    boolean tracing = sharedPref.getBoolean(
+            keyprefTracing, Boolean.valueOf(getString(R.string.pref_tracing_default)));
+
     // Start AppRTCDemo activity.
     Log.d(TAG, "Connecting to room " + roomId + " at URL " + roomUrl);
     if (validateUrl(roomUrl)) {
@@ -339,12 +357,15 @@ public class ConnectActivity extends Activity {
       intent.putExtra(CallActivity.EXTRA_VIDEO_BITRATE, videoStartBitrate);
       intent.putExtra(CallActivity.EXTRA_VIDEOCODEC, videoCodec);
       intent.putExtra(CallActivity.EXTRA_HWCODEC_ENABLED, hwCodec);
+      intent.putExtra(CallActivity.EXTRA_CAPTURETOTEXTURE_ENABLED, captureToTexture);
       intent.putExtra(CallActivity.EXTRA_NOAUDIOPROCESSING_ENABLED,
           noAudioProcessing);
+      intent.putExtra(CallActivity.EXTRA_AECDUMP_ENABLED, aecDump);
       intent.putExtra(CallActivity.EXTRA_OPENSLES_ENABLED, useOpenSLES);
       intent.putExtra(CallActivity.EXTRA_AUDIO_BITRATE, audioStartBitrate);
       intent.putExtra(CallActivity.EXTRA_AUDIOCODEC, audioCodec);
       intent.putExtra(CallActivity.EXTRA_DISPLAY_HUD, displayHud);
+      intent.putExtra(CallActivity.EXTRA_TRACING, tracing);
       intent.putExtra(CallActivity.EXTRA_CMDLINE, commandLineRun);
       intent.putExtra(CallActivity.EXTRA_RUNTIME, runTimeMs);
 

@@ -30,15 +30,18 @@ public class SettingsActivity extends Activity
   private String keyprefStartVideoBitrateValue;
   private String keyPrefVideoCodec;
   private String keyprefHwCodec;
+  private String keyprefCaptureToTexture;
 
   private String keyprefStartAudioBitrateType;
   private String keyprefStartAudioBitrateValue;
   private String keyPrefAudioCodec;
   private String keyprefNoAudioProcessing;
+  private String keyprefAecDump;
   private String keyprefOpenSLES;
 
   private String keyPrefRoomServerUrl;
   private String keyPrefDisplayHud;
+  private String keyPrefTracing;
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -51,15 +54,18 @@ public class SettingsActivity extends Activity
     keyprefStartVideoBitrateValue = getString(R.string.pref_startvideobitratevalue_key);
     keyPrefVideoCodec = getString(R.string.pref_videocodec_key);
     keyprefHwCodec = getString(R.string.pref_hwcodec_key);
+    keyprefCaptureToTexture = getString(R.string.pref_capturetotexture_key);
 
     keyprefStartAudioBitrateType = getString(R.string.pref_startaudiobitrate_key);
     keyprefStartAudioBitrateValue = getString(R.string.pref_startaudiobitratevalue_key);
     keyPrefAudioCodec = getString(R.string.pref_audiocodec_key);
     keyprefNoAudioProcessing = getString(R.string.pref_noaudioprocessing_key);
+    keyprefAecDump = getString(R.string.pref_aecdump_key);
     keyprefOpenSLES = getString(R.string.pref_opensles_key);
 
     keyPrefRoomServerUrl = getString(R.string.pref_room_server_url_key);
     keyPrefDisplayHud = getString(R.string.pref_displayhud_key);
+    keyPrefTracing = getString(R.string.pref_tracing_key);
 
     // Display the fragment as the main content.
     settingsFragment = new SettingsFragment();
@@ -84,16 +90,19 @@ public class SettingsActivity extends Activity
     setVideoBitrateEnable(sharedPreferences);
     updateSummary(sharedPreferences, keyPrefVideoCodec);
     updateSummaryB(sharedPreferences, keyprefHwCodec);
+    updateSummaryB(sharedPreferences, keyprefCaptureToTexture);
 
     updateSummary(sharedPreferences, keyprefStartAudioBitrateType);
     updateSummaryBitrate(sharedPreferences, keyprefStartAudioBitrateValue);
     setAudioBitrateEnable(sharedPreferences);
     updateSummary(sharedPreferences, keyPrefAudioCodec);
     updateSummaryB(sharedPreferences, keyprefNoAudioProcessing);
+    updateSummaryB(sharedPreferences, keyprefAecDump);
     updateSummaryB(sharedPreferences, keyprefOpenSLES);
 
     updateSummary(sharedPreferences, keyPrefRoomServerUrl);
     updateSummaryB(sharedPreferences, keyPrefDisplayHud);
+    updateSummaryB(sharedPreferences, keyPrefTracing);
   }
 
   @Override
@@ -119,9 +128,12 @@ public class SettingsActivity extends Activity
         || key.equals(keyprefStartAudioBitrateValue)) {
       updateSummaryBitrate(sharedPreferences, key);
     } else if (key.equals(keyprefVideoCall)
+        || key.equals(keyPrefTracing)
         || key.equals(keyprefCaptureQualitySlider)
         || key.equals(keyprefHwCodec)
+        || key.equals(keyprefCaptureToTexture)
         || key.equals(keyprefNoAudioProcessing)
+        || key.equals(keyprefAecDump)
         || key.equals(keyprefOpenSLES)
         || key.equals(keyPrefDisplayHud)) {
       updateSummaryB(sharedPreferences, key);

@@ -60,6 +60,12 @@
             android:title="@string/pref_hwcodec_title"
             android:dialogTitle="@string/pref_hwcodec_dlg"
             android:defaultValue="@string/pref_hwcodec_default" />
+
+        <CheckBoxPreference
+            android:key="@string/pref_capturetotexture_key"
+            android:title="@string/pref_capturetotexture_title"
+            android:dialogTitle="@string/pref_capturetotexture_dlg"
+            android:defaultValue="@string/pref_capturetotexture_default" />
     </PreferenceCategory>
 
     <PreferenceCategory
@@ -96,6 +102,12 @@
             android:defaultValue="@string/pref_noaudioprocessing_default" />
 
         <CheckBoxPreference
+            android:key="@string/pref_aecdump_key"
+            android:title="@string/pref_aecdump_title"
+            android:dialogTitle="@string/pref_aecdump_dlg"
+            android:defaultValue="@string/pref_aecdump_default" />
+
+        <CheckBoxPreference
             android:key="@string/pref_opensles_key"
             android:title="@string/pref_opensles_title"
             android:dialogTitle="@string/pref_opensles_dlg"
@@ -118,6 +130,12 @@
             android:title="@string/pref_displayhud_title"
             android:dialogTitle="@string/pref_displayhud_dlg"
            android:defaultValue="@string/pref_displayhud_default" />
+
+        <CheckBoxPreference
+            android:key="@string/pref_tracing_key"
+            android:title="@string/pref_tracing_title"
+            android:dialogTitle="@string/pref_tracing_dlg"
+           android:defaultValue="@string/pref_tracing_default" />
     </PreferenceCategory>
 
 </PreferenceScreen>
