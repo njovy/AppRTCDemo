@@ -32,6 +32,7 @@ import android.widget.Toast;
 
 import org.webrtc.EglBase;
 import org.webrtc.IceCandidate;
+import org.webrtc.PeerConnectionFactory;
 import org.webrtc.SessionDescription;
 import org.webrtc.StatsReport;
 import org.webrtc.RendererCommon.ScalingType;
@@ -66,16 +67,21 @@ public class CallActivity extends Activity
       "org.appspot.apprtc.VIDEOCODEC";
   public static final String EXTRA_HWCODEC_ENABLED =
       "org.appspot.apprtc.HWCODEC";
+  public static final String EXTRA_CAPTURETOTEXTURE_ENABLED =
+      "org.appspot.apprtc.CAPTURETOTEXTURE";
   public static final String EXTRA_AUDIO_BITRATE =
       "org.appspot.apprtc.AUDIO_BITRATE";
   public static final String EXTRA_AUDIOCODEC =
       "org.appspot.apprtc.AUDIOCODEC";
   public static final String EXTRA_NOAUDIOPROCESSING_ENABLED =
       "org.appspot.apprtc.NOAUDIOPROCESSING";
+  public static final String EXTRA_AECDUMP_ENABLED =
+      "org.appspot.apprtc.AECDUMP";
   public static final String EXTRA_OPENSLES_ENABLED =
       "org.appspot.apprtc.OPENSLES";
   public static final String EXTRA_DISPLAY_HUD =
       "org.appspot.apprtc.DISPLAY_HUD";
+  public static final String EXTRA_TRACING = "org.appspot.apprtc.TRACING";
   public static final String EXTRA_CMDLINE =
       "org.appspot.apprtc.CMDLINE";
   public static final String EXTRA_RUNTIME =
@@ -176,9 +182,9 @@ public class CallActivity extends Activity
     remoteRender.setOnClickListener(listener);
 
     // Create video renderers.
-    rootEglBase = new EglBase();
-    localRender.init(rootEglBase.getContext(), null);
-    remoteRender.init(rootEglBase.getContext(), null);
+    rootEglBase = EglBase.create();
+    localRender.init(rootEglBase.getEglBaseContext(), null);
+    remoteRender.init(rootEglBase.getEglBaseContext(), null);
     localRender.setZOrderMediaOverlay(true);
     updateVideoView();
 
@@ -211,18 +217,22 @@ public class CallActivity extends Activity
       return;
     }
     boolean loopback = intent.getBooleanExtra(EXTRA_LOOPBACK, false);
+    boolean tracing = intent.getBooleanExtra(EXTRA_TRACING, false);
     peerConnectionParameters = new PeerConnectionParameters(
         intent.getBooleanExtra(EXTRA_VIDEO_CALL, true),
         loopback,
+        tracing,
         intent.getIntExtra(EXTRA_VIDEO_WIDTH, 0),
         intent.getIntExtra(EXTRA_VIDEO_HEIGHT, 0),
         intent.getIntExtra(EXTRA_VIDEO_FPS, 0),
         intent.getIntExtra(EXTRA_VIDEO_BITRATE, 0),
         intent.getStringExtra(EXTRA_VIDEOCODEC),
         intent.getBooleanExtra(EXTRA_HWCODEC_ENABLED, true),
+        intent.getBooleanExtra(EXTRA_CAPTURETOTEXTURE_ENABLED, false),
         intent.getIntExtra(EXTRA_AUDIO_BITRATE, 0),
         intent.getStringExtra(EXTRA_AUDIOCODEC),
         intent.getBooleanExtra(EXTRA_NOAUDIOPROCESSING_ENABLED, false),
+        intent.getBooleanExtra(EXTRA_AECDUMP_ENABLED, false),
         intent.getBooleanExtra(EXTRA_OPENSLES_ENABLED, false));
     commandLineRun = intent.getBooleanExtra(EXTRA_CMDLINE, false);
     runTimeMs = intent.getIntExtra(EXTRA_RUNTIME, 0);
@@ -245,6 +255,7 @@ public class CallActivity extends Activity
     // For command line execution run connection for <runTimeMs> and exit.
     if (commandLineRun && runTimeMs > 0) {
       (new Handler()).postDelayed(new Runnable() {
+        @Override
         public void run() {
           disconnect();
         }
@@ -252,6 +263,11 @@ public class CallActivity extends Activity
     }
 
     peerConnectionClient = PeerConnectionClient.getInstance();
+    if (loopback) {
+      PeerConnectionFactory.Options options = new PeerConnectionFactory.Options();
+      options.networkIgnoreMask = 0;
+      peerConnectionClient.setPeerConnectionFactoryOptions(options);
+    }
     peerConnectionClient.createPeerConnectionFactory(
         CallActivity.this, peerConnectionParameters, CallActivity.this);
   }
@@ -479,7 +495,7 @@ public class CallActivity extends Activity
 
     signalingParameters = params;
     logAndToast("Creating peer connection, delay=" + delta + "ms");
-    peerConnectionClient.createPeerConnection(rootEglBase.getContext(),
+    peerConnectionClient.createPeerConnection(rootEglBase.getEglBaseContext(),
         localRender, remoteRender, signalingParameters);
 
     if (signalingParameters.initiator) {

@@ -11,12 +11,15 @@
 package org.appspot.apprtc;
 
 import android.content.Context;
+import android.os.ParcelFileDescriptor;
+import android.os.Environment;
 import android.util.Log;
 
 import org.appspot.apprtc.AppRTCClient.SignalingParameters;
 import org.appspot.apprtc.util.LooperExecutor;
 import org.webrtc.CameraEnumerationAndroid;
 import org.webrtc.DataChannel;
+import org.webrtc.EglBase;
 import org.webrtc.IceCandidate;
 import org.webrtc.Logging;
 import org.webrtc.MediaCodecVideoEncoder;
@@ -36,14 +39,14 @@ import org.webrtc.VideoSource;
 import org.webrtc.VideoTrack;
 import org.webrtc.voiceengine.WebRtcAudioManager;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.EnumSet;
 import java.util.LinkedList;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import javax.microedition.khronos.egl.EGLContext;
 
 /**
  * Peer connection client implementation.
@@ -104,6 +107,7 @@ public class PeerConnectionClient {
   private MediaConstraints pcConstraints;
   private MediaConstraints videoConstraints;
   private MediaConstraints audioConstraints;
+  private ParcelFileDescriptor aecDumpFileDescriptor;
   private MediaConstraints sdpMediaConstraints;
   private PeerConnectionParameters peerConnectionParameters;
   // Queued remote ICE candidates are consumed only after both local and
@@ -127,34 +131,40 @@ public class PeerConnectionClient {
   public static class PeerConnectionParameters {
     public final boolean videoCallEnabled;
     public final boolean loopback;
+    public final boolean tracing;
     public final int videoWidth;
     public final int videoHeight;
     public final int videoFps;
     public final int videoStartBitrate;
     public final String videoCodec;
     public final boolean videoCodecHwAcceleration;
+    public final boolean captureToTexture;
     public final int audioStartBitrate;
     public final String audioCodec;
     public final boolean noAudioProcessing;
+    public final boolean aecDump;
     public final boolean useOpenSLES;
 
     public PeerConnectionParameters(
-        boolean videoCallEnabled, boolean loopback,
+        boolean videoCallEnabled, boolean loopback, boolean tracing,
         int videoWidth, int videoHeight, int videoFps, int videoStartBitrate,
-        String videoCodec, boolean videoCodecHwAcceleration,
+        String videoCodec, boolean videoCodecHwAcceleration, boolean captureToTexture,
         int audioStartBitrate, String audioCodec,
-        boolean noAudioProcessing, boolean useOpenSLES) {
+        boolean noAudioProcessing, boolean aecDump, boolean useOpenSLES) {
       this.videoCallEnabled = videoCallEnabled;
       this.loopback = loopback;
+      this.tracing = tracing;
       this.videoWidth = videoWidth;
       this.videoHeight = videoHeight;
       this.videoFps = videoFps;
       this.videoStartBitrate = videoStartBitrate;
       this.videoCodec = videoCodec;
       this.videoCodecHwAcceleration = videoCodecHwAcceleration;
+      this.captureToTexture = captureToTexture;
       this.audioStartBitrate = audioStartBitrate;
       this.audioCodec = audioCodec;
       this.noAudioProcessing = noAudioProcessing;
+      this.aecDump = aecDump;
       this.useOpenSLES = useOpenSLES;
     }
   }
@@ -248,7 +258,7 @@ public class PeerConnectionClient {
   }
 
   public void createPeerConnection(
-      final EGLContext renderEGLContext,
+      final EglBase.Context renderEGLContext,
       final VideoRenderer.Callbacks localRender,
       final VideoRenderer.Callbacks remoteRender,
       final SignalingParameters signalingParameters) {
@@ -282,6 +292,12 @@ public class PeerConnectionClient {
   }
 
   private void createPeerConnectionFactoryInternal(Context context) {
+      PeerConnectionFactory.initializeInternalTracer();
+      if (peerConnectionParameters.tracing) {
+          PeerConnectionFactory.startInternalTracingCapture(
+                  Environment.getExternalStorageDirectory().getAbsolutePath() + File.separator
+                  + "webrtc-trace.txt");
+      }
     Log.d(TAG, "Create peer connection factory. Use video: " +
         peerConnectionParameters.videoCallEnabled);
     isError = false;
@@ -321,11 +337,10 @@ public class PeerConnectionClient {
         peerConnectionParameters.videoCodecHwAcceleration)) {
       events.onPeerConnectionError("Failed to initializeAndroidGlobals");
     }
-    factory = new PeerConnectionFactory();
     if (options != null) {
       Log.d(TAG, "Factory networkIgnoreMask option: " + options.networkIgnoreMask);
-      factory.setOptions(options);
     }
+    factory = new PeerConnectionFactory(options);
     Log.d(TAG, "Peer connection factory created.");
   }
 
@@ -414,7 +429,7 @@ public class PeerConnectionClient {
     }
   }
 
-  private void createPeerConnectionInternal(EGLContext renderEGLContext) {
+  private void createPeerConnectionInternal(EglBase.Context renderEGLContext) {
     if (factory == null || isError) {
       Log.e(TAG, "Peerconnection factory is not created");
       return;
@@ -429,7 +444,7 @@ public class PeerConnectionClient {
 
     if (videoCallEnabled) {
       Log.d(TAG, "EGLContext: " + renderEGLContext);
-      factory.setVideoHwAccelerationOptions(renderEGLContext);
+      factory.setVideoHwAccelerationOptions(renderEGLContext, renderEGLContext);
     }
 
     PeerConnection.RTCConfiguration rtcConfig =
@@ -462,7 +477,8 @@ public class PeerConnectionClient {
         cameraDeviceName = frontCameraDeviceName;
       }
       Log.d(TAG, "Opening camera: " + cameraDeviceName);
-      videoCapturer = VideoCapturerAndroid.create(cameraDeviceName, null);
+      videoCapturer = VideoCapturerAndroid.create(cameraDeviceName, null,
+          peerConnectionParameters.captureToTexture ? renderEGLContext : null);
       if (videoCapturer == null) {
         reportError("Failed to open camera");
         return;
@@ -475,10 +491,26 @@ public class PeerConnectionClient {
         factory.createAudioSource(audioConstraints)));
     peerConnection.addStream(mediaStream);
 
+    if (peerConnectionParameters.aecDump) {
+      try {
+        aecDumpFileDescriptor = ParcelFileDescriptor.open(
+            new File("/sdcard/Download/audio.aecdump"),
+                ParcelFileDescriptor.MODE_READ_WRITE |
+                ParcelFileDescriptor.MODE_CREATE |
+                ParcelFileDescriptor.MODE_TRUNCATE);
+        factory.startAecDump(aecDumpFileDescriptor.getFd(), -1);
+      } catch(IOException e) {
+        Log.e(TAG, "Can not open aecdump file", e);
+      }
+    }
+
     Log.d(TAG, "Peer connection created.");
   }
 
   private void closeInternal() {
+    if (factory != null && peerConnectionParameters.aecDump) {
+      factory.stopAecDump();
+    }
     Log.d(TAG, "Closing peer connection.");
     statsTimer.cancel();
     if (peerConnection != null) {
@@ -498,6 +530,8 @@ public class PeerConnectionClient {
     options = null;
     Log.d(TAG, "Closing peer connection done.");
     events.onPeerConnectionClosed();
+    PeerConnectionFactory.stopInternalTracingCapture();
+    PeerConnectionFactory.shutdownInternalTracer();
   }
 
   public boolean isHDVideo() {

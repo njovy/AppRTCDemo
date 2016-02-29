@@ -12,11 +12,11 @@ android {
 
   defaultConfig {
     applicationId "org.appspot.apprtc"
-    minSdkVersion 14
+    minSdkVersion 16
     targetSdkVersion 23
 
-    versionCode 10742
-    versionName "r10742"
+    versionCode 11801
+    versionName "r11801"
 
     testApplicationId "org.appspot.apprtc.test"
     testInstrumentationRunner "android.test.InstrumentationTestRunner"
