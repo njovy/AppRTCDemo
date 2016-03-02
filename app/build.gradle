@@ -2,7 +2,7 @@ apply plugin: 'com.android.application'
 
 android {
   compileSdkVersion 23
-  buildToolsVersion "23.0.1"
+  buildToolsVersion "23.0.2"
 
   sourceSets.main {
     jniLibs.srcDir 'libs'
@@ -13,10 +13,10 @@ android {
   defaultConfig {
     applicationId "org.appspot.apprtc"
     minSdkVersion 16
-    targetSdkVersion 23
+    targetSdkVersion 22
 
-    versionCode 11801
-    versionName "r11801"
+    versionCode 11835
+    versionName "r11835"
 
     testApplicationId "org.appspot.apprtc.test"
     testInstrumentationRunner "android.test.InstrumentationTestRunner"

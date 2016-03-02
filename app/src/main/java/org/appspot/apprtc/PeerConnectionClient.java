@@ -350,10 +350,10 @@ public class PeerConnectionClient {
     // Enable DTLS for normal calls and disable for loopback calls.
     if (peerConnectionParameters.loopback) {
       pcConstraints.optional.add(
-          new KeyValuePair(DTLS_SRTP_KEY_AGREEMENT_CONSTRAINT, "false"));
+          new MediaConstraints.KeyValuePair(DTLS_SRTP_KEY_AGREEMENT_CONSTRAINT, "false"));
     } else {
       pcConstraints.optional.add(
-          new KeyValuePair(DTLS_SRTP_KEY_AGREEMENT_CONSTRAINT, "true"));
+          new MediaConstraints.KeyValuePair(DTLS_SRTP_KEY_AGREEMENT_CONSTRAINT, "true"));
     }
 
     // Check if there is a camera on device and disable video call if not.
@@ -407,24 +407,24 @@ public class PeerConnectionClient {
     // added for audio performance measurements
     if (peerConnectionParameters.noAudioProcessing) {
       Log.d(TAG, "Disabling audio processing");
-      audioConstraints.mandatory.add(new KeyValuePair(
+      audioConstraints.mandatory.add(new MediaConstraints.KeyValuePair(
             AUDIO_ECHO_CANCELLATION_CONSTRAINT, "false"));
-      audioConstraints.mandatory.add(new KeyValuePair(
+      audioConstraints.mandatory.add(new MediaConstraints.KeyValuePair(
             AUDIO_AUTO_GAIN_CONTROL_CONSTRAINT, "false"));
-      audioConstraints.mandatory.add(new KeyValuePair(
+      audioConstraints.mandatory.add(new MediaConstraints.KeyValuePair(
             AUDIO_HIGH_PASS_FILTER_CONSTRAINT, "false"));
-      audioConstraints.mandatory.add(new KeyValuePair(
+      audioConstraints.mandatory.add(new MediaConstraints.KeyValuePair(
            AUDIO_NOISE_SUPPRESSION_CONSTRAINT , "false"));
     }
     // Create SDP constraints.
     sdpMediaConstraints = new MediaConstraints();
-    sdpMediaConstraints.mandatory.add(new KeyValuePair(
+    sdpMediaConstraints.mandatory.add(new MediaConstraints.KeyValuePair(
         "OfferToReceiveAudio", "true"));
     if (videoCallEnabled || peerConnectionParameters.loopback) {
-      sdpMediaConstraints.mandatory.add(new KeyValuePair(
+      sdpMediaConstraints.mandatory.add(new MediaConstraints.KeyValuePair(
           "OfferToReceiveVideo", "true"));
     } else {
-      sdpMediaConstraints.mandatory.add(new KeyValuePair(
+      sdpMediaConstraints.mandatory.add(new MediaConstraints.KeyValuePair(
           "OfferToReceiveVideo", "false"));
     }
   }
@@ -931,7 +931,7 @@ public class PeerConnectionClient {
 
     @Override
     public void onIceConnectionChange(
-        final IceConnectionState newState) {
+        final PeerConnection.IceConnectionState newState) {
       executor.execute(new Runnable() {
         @Override
         public void run() {
