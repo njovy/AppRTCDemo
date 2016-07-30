@@ -19,13 +19,14 @@ import org.appspot.apprtc.util.LooperExecutor;
 
 import android.util.Log;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.webrtc.IceCandidate;
 import org.webrtc.SessionDescription;
 
 /**
- * Negotiates signaling for chatting with apprtc.appspot.com "rooms".
+ * Negotiates signaling for chatting with https://appr.tc "rooms".
  * Uses the client<->server specifics of the apprtc AppEngine webapp.
  *
  * <p>To use: create an instance of this object (registering a message handler) and
@@ -252,6 +253,37 @@ public class WebSocketRTCClient implements AppRTCClient,
     });
   }
 
+  // Send removed Ice candidates to the other participant.
+  @Override
+  public void sendLocalIceCandidateRemovals(final IceCandidate[] candidates) {
+    executor.execute(new Runnable() {
+      @Override
+      public void run() {
+        JSONObject json = new JSONObject();
+        jsonPut(json, "type", "remove-candidates");
+        JSONArray jsonArray =  new JSONArray();
+        for (final IceCandidate candidate : candidates) {
+          jsonArray.put(toJsonCandidate(candidate));
+        }
+        jsonPut(json, "candidates", jsonArray);
+        if (initiator) {
+          // Call initiator sends ice candidates to GAE server.
+          if (roomState != ConnectionState.CONNECTED) {
+            reportError("Sending ICE candidate removals in non connected state.");
+            return;
+          }
+          sendPostMessage(MessageType.MESSAGE, messageUrl, json.toString());
+          if (connectionParameters.loopback) {
+            events.onRemoteIceCandidatesRemoved(candidates);
+          }
+        } else {
+          // Call receiver sends ice candidates to websocket server.
+          wsClient.send(json.toString());
+        }
+      }
+    });
+  }
+
   // --------------------------------------------------------------------
   // WebSocketChannelEvents interface implementation.
   // All events are called by WebSocketChannelClient on a local looper thread
@@ -270,11 +302,14 @@ public class WebSocketRTCClient implements AppRTCClient,
         json = new JSONObject(msgText);
         String type = json.optString("type");
         if (type.equals("candidate")) {
-          IceCandidate candidate = new IceCandidate(
-              json.getString("id"),
-              json.getInt("label"),
-              json.getString("candidate"));
-          events.onRemoteIceCandidate(candidate);
+          events.onRemoteIceCandidate(toJavaCandidate(json));
+        } else if (type.equals("remove-candidates")) {
+          JSONArray candidateArray = json.getJSONArray("candidates");
+          IceCandidate[] candidates = new IceCandidate[candidateArray.length()];
+          for (int i =0; i < candidateArray.length(); ++i) {
+            candidates[i] = toJavaCandidate(candidateArray.getJSONObject(i));
+          }
+          events.onRemoteIceCandidatesRemoved(candidates);
         } else if (type.equals("answer")) {
           if (initiator) {
             SessionDescription sdp = new SessionDescription(
@@ -375,5 +410,21 @@ public class WebSocketRTCClient implements AppRTCClient,
         }
       });
     httpConnection.send();
+  }
+
+  // Converts a Java candidate to a JSONObject.
+  private JSONObject toJsonCandidate(final IceCandidate candidate) {
+    JSONObject json = new JSONObject();
+    jsonPut(json, "label", candidate.sdpMLineIndex);
+    jsonPut(json, "id", candidate.sdpMid);
+    jsonPut(json, "candidate", candidate.sdp);
+    return json;
+  }
+
+  // Converts a JSON candidate to a Java object.
+  IceCandidate toJavaCandidate(JSONObject json) throws JSONException {
+    return new IceCandidate(json.getString("id"),
+                            json.getInt("label"),
+                            json.getString("candidate"));
   }
 }

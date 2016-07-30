@@ -10,9 +10,6 @@
 
 package org.appspot.apprtc;
 
-import org.appspot.apprtc.util.AppRTCUtils;
-import org.appspot.apprtc.util.AppRTCUtils.NonThreadSafe;
-
 import android.content.Context;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -20,6 +17,9 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Build;
 import android.util.Log;
+
+import org.appspot.apprtc.util.AppRTCUtils;
+import org.webrtc.ThreadUtils;
 
 /**
  * AppRTCProximitySensor manages functions related to the proximity sensor in
@@ -36,7 +36,7 @@ public class AppRTCProximitySensor implements SensorEventListener {
   // This class should be created, started and stopped on one thread
   // (e.g. the main thread). We use |nonThreadSafe| to ensure that this is
   // the case. Only active when |DEBUG| is set to true.
-  private final NonThreadSafe nonThreadSafe = new NonThreadSafe();
+  private final ThreadUtils.ThreadChecker threadChecker = new ThreadUtils.ThreadChecker();
 
   private final Runnable onSensorStateListener;
   private final SensorManager sensorManager;
@@ -57,11 +57,11 @@ public class AppRTCProximitySensor implements SensorEventListener {
   }
 
   /**
-   * Activate the proximity sensor. Also do initializtion if called for the
+   * Activate the proximity sensor. Also do initialization if called for the
    * first time.
    */
   public boolean start() {
-    checkIfCalledOnValidThread();
+    threadChecker.checkIsOnValidThread();
     Log.d(TAG, "start" + AppRTCUtils.getThreadInfo());
     if (!initDefaultSensor()) {
       // Proximity sensor is not supported on this device.
@@ -74,7 +74,7 @@ public class AppRTCProximitySensor implements SensorEventListener {
 
   /** Deactivate the proximity sensor. */
   public void stop() {
-    checkIfCalledOnValidThread();
+    threadChecker.checkIsOnValidThread();
     Log.d(TAG, "stop" + AppRTCUtils.getThreadInfo());
     if (proximitySensor == null) {
       return;
@@ -84,13 +84,13 @@ public class AppRTCProximitySensor implements SensorEventListener {
 
   /** Getter for last reported state. Set to true if "near" is reported. */
   public boolean sensorReportsNearState() {
-    checkIfCalledOnValidThread();
+    threadChecker.checkIsOnValidThread();
     return lastStateReportIsNear;
   }
 
   @Override
   public final void onAccuracyChanged(Sensor sensor, int accuracy) {
-    checkIfCalledOnValidThread();
+    threadChecker.checkIsOnValidThread();
     AppRTCUtils.assertIsTrue(sensor.getType() == Sensor.TYPE_PROXIMITY);
     if (accuracy == SensorManager.SENSOR_STATUS_UNRELIABLE) {
       Log.e(TAG, "The values returned by this sensor cannot be trusted");
@@ -99,7 +99,7 @@ public class AppRTCProximitySensor implements SensorEventListener {
 
   @Override
   public final void onSensorChanged(SensorEvent event) {
-    checkIfCalledOnValidThread();
+    threadChecker.checkIsOnValidThread();
     AppRTCUtils.assertIsTrue(event.sensor.getType() == Sensor.TYPE_PROXIMITY);
     // As a best practice; do as little as possible within this method and
     // avoid blocking.
@@ -125,7 +125,7 @@ public class AppRTCProximitySensor implements SensorEventListener {
 
   /**
    * Get default proximity sensor if it exists. Tablet devices (e.g. Nexus 7)
-   * does not support this type of sensor and false will be retured in such
+   * does not support this type of sensor and false will be returned in such
    * cases.
    */
   private boolean initDefaultSensor() {
@@ -146,35 +146,26 @@ public class AppRTCProximitySensor implements SensorEventListener {
       return;
     }
     StringBuilder info = new StringBuilder("Proximity sensor: ");
-    info.append("name=" + proximitySensor.getName());
-    info.append(", vendor: " + proximitySensor.getVendor());
-    info.append(", power: " + proximitySensor.getPower());
-    info.append(", resolution: " + proximitySensor.getResolution());
-    info.append(", max range: " + proximitySensor.getMaximumRange());
+    info.append("name=").append(proximitySensor.getName());
+    info.append(", vendor: ").append(proximitySensor.getVendor());
+    info.append(", power: ").append(proximitySensor.getPower());
+    info.append(", resolution: ").append(proximitySensor.getResolution());
+    info.append(", max range: ").append(proximitySensor.getMaximumRange());
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.GINGERBREAD) {
       // Added in API level 9.
-      info.append(", min delay: " + proximitySensor.getMinDelay());
+      info.append(", min delay: ").append(proximitySensor.getMinDelay());
     }
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT_WATCH) {
       // Added in API level 20.
-      info.append(", type: " + proximitySensor.getStringType());
+      info.append(", type: ").append(proximitySensor.getStringType());
     }
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
       // Added in API level 21.
-      info.append(", max delay: " + proximitySensor.getMaxDelay());
-      info.append(", reporting mode: " + proximitySensor.getReportingMode());
-      info.append(", isWakeUpSensor: " + proximitySensor.isWakeUpSensor());
+      info.append(", max delay: ").append(proximitySensor.getMaxDelay());
+      info.append(", reporting mode: ").append(proximitySensor.getReportingMode());
+      info.append(", isWakeUpSensor: ").append(proximitySensor.isWakeUpSensor());
     }
     Log.d(TAG, info.toString());
   }
 
-  /**
-   * Helper method for debugging purposes. Ensures that method is
-   * called on same thread as this object was created on.
-   */
-  private void checkIfCalledOnValidThread() {
-    if (!nonThreadSafe.calledOnValidThread()) {
-      throw new IllegalStateException("Method is not called on valid thread");
-    }
-  }
 }
