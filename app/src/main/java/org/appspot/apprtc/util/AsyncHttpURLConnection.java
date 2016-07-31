@@ -23,7 +23,7 @@ import java.util.Scanner;
  */
 public class AsyncHttpURLConnection {
   private static final int HTTP_TIMEOUT_MS = 8000;
-  private static final String HTTP_ORIGIN = "https://apprtc.appspot.com";
+  private static final String HTTP_ORIGIN = "https://appr.tc";
   private final String method;
   private final String url;
   private final String message;
@@ -34,8 +34,8 @@ public class AsyncHttpURLConnection {
    * Http requests callbacks.
    */
   public interface AsyncHttpEvents {
-    public void onHttpError(String errorMessage);
-    public void onHttpComplete(String response);
+    void onHttpError(String errorMessage);
+    void onHttpComplete(String response);
   }
 
   public AsyncHttpURLConnection(String method, String url, String message,

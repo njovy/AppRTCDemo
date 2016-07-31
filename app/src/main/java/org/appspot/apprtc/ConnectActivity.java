@@ -19,6 +19,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.util.Log;
+import android.view.ContextMenu;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -45,16 +46,16 @@ import java.util.Random;
 public class ConnectActivity extends Activity {
   private static final String TAG = "ConnectActivity";
   private static final int CONNECTION_REQUEST = 1;
+  private static final int REMOVE_FAVORITE_INDEX = 0;
   private static boolean commandLineRun = false;
 
-  private ImageButton addRoomButton;
-  private ImageButton removeRoomButton;
   private ImageButton connectButton;
-  private ImageButton connectLoopbackButton;
+  private ImageButton addFavoriteButton;
   private EditText roomEditText;
   private ListView roomListView;
   private SharedPreferences sharedPref;
   private String keyprefVideoCallEnabled;
+  private String keyprefCamera2;
   private String keyprefResolution;
   private String keyprefFps;
   private String keyprefCaptureQualitySlider;
@@ -69,6 +70,9 @@ public class ConnectActivity extends Activity {
   private String keyprefNoAudioProcessingPipeline;
   private String keyprefAecDump;
   private String keyprefOpenSLES;
+  private String keyprefDisableBuiltInAec;
+  private String keyprefDisableBuiltInAgc;
+  private String keyprefDisableBuiltInNs;
   private String keyprefDisplayHud;
   private String keyprefTracing;
   private String keyprefRoomServerUrl;
@@ -85,6 +89,7 @@ public class ConnectActivity extends Activity {
     PreferenceManager.setDefaultValues(this, R.xml.preferences, false);
     sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
     keyprefVideoCallEnabled = getString(R.string.pref_videocall_key);
+    keyprefCamera2 = getString(R.string.pref_camera2_key);
     keyprefResolution = getString(R.string.pref_resolution_key);
     keyprefFps = getString(R.string.pref_fps_key);
     keyprefCaptureQualitySlider = getString(R.string.pref_capturequalityslider_key);
@@ -99,6 +104,9 @@ public class ConnectActivity extends Activity {
     keyprefNoAudioProcessingPipeline = getString(R.string.pref_noaudioprocessing_key);
     keyprefAecDump = getString(R.string.pref_aecdump_key);
     keyprefOpenSLES = getString(R.string.pref_opensles_key);
+    keyprefDisableBuiltInAec = getString(R.string.pref_disable_built_in_aec_key);
+    keyprefDisableBuiltInAgc = getString(R.string.pref_disable_built_in_agc_key);
+    keyprefDisableBuiltInNs = getString(R.string.pref_disable_built_in_ns_key);
     keyprefDisplayHud = getString(R.string.pref_displayhud_key);
     keyprefTracing = getString(R.string.pref_tracing_key);
     keyprefRoomServerUrl = getString(R.string.pref_room_server_url_key);
@@ -114,7 +122,7 @@ public class ConnectActivity extends Activity {
         public boolean onEditorAction(
             TextView textView, int i, KeyEvent keyEvent) {
           if (i == EditorInfo.IME_ACTION_DONE) {
-            addRoomButton.performClick();
+            addFavoriteButton.performClick();
             return true;
           }
           return false;
@@ -123,31 +131,24 @@ public class ConnectActivity extends Activity {
     roomEditText.requestFocus();
 
     roomListView = (ListView) findViewById(R.id.room_listview);
-    roomListView.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
-
-    addRoomButton = (ImageButton) findViewById(R.id.add_room_button);
-    addRoomButton.setOnClickListener(addRoomListener);
-    removeRoomButton = (ImageButton) findViewById(R.id.remove_room_button);
-    removeRoomButton.setOnClickListener(removeRoomListener);
+    roomListView.setEmptyView(findViewById(android.R.id.empty));
+    roomListView.setOnItemClickListener(roomListClickListener);
+    registerForContextMenu(roomListView);
     connectButton = (ImageButton) findViewById(R.id.connect_button);
     connectButton.setOnClickListener(connectListener);
-    connectLoopbackButton =
-        (ImageButton) findViewById(R.id.connect_loopback_button);
-    connectLoopbackButton.setOnClickListener(connectListener);
+    addFavoriteButton = (ImageButton) findViewById(R.id.add_favorite_button);
+    addFavoriteButton.setOnClickListener(addFavoriteListener);
 
     // If an implicit VIEW intent is launching the app, go directly to that URL.
     final Intent intent = getIntent();
     if ("android.intent.action.VIEW".equals(intent.getAction())
         && !commandLineRun) {
-      commandLineRun = true;
       boolean loopback = intent.getBooleanExtra(
           CallActivity.EXTRA_LOOPBACK, false);
       int runTimeMs = intent.getIntExtra(
           CallActivity.EXTRA_RUNTIME, 0);
       String room = sharedPref.getString(keyprefRoom, "");
-      roomEditText.setText(room);
-      connectToRoom(loopback, runTimeMs);
-      return;
+      connectToRoom(room, true, loopback, runTimeMs);
     }
   }
 
@@ -158,11 +159,41 @@ public class ConnectActivity extends Activity {
   }
 
   @Override
+  public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
+    if (v.getId() == R.id.room_listview) {
+      AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) menuInfo;
+      menu.setHeaderTitle(roomList.get(info.position));
+      String[] menuItems = getResources().getStringArray(R.array.roomListContextMenu);
+      for (int i = 0; i < menuItems.length; i++) {
+        menu.add(Menu.NONE, i, i, menuItems[i]);
+      }
+    } else {
+      super.onCreateContextMenu(menu, v, menuInfo);
+    }
+  }
+
+  @Override
+  public boolean onContextItemSelected(MenuItem item) {
+    if (item.getItemId() == REMOVE_FAVORITE_INDEX) {
+      AdapterView.AdapterContextMenuInfo info =
+          (AdapterView.AdapterContextMenuInfo) item.getMenuInfo();
+      roomList.remove(info.position);
+      adapter.notifyDataSetChanged();
+      return true;
+    }
+
+    return super.onContextItemSelected(item);
+  }
+
+  @Override
   public boolean onOptionsItemSelected(MenuItem item) {
     // Handle presses on the action bar items.
     if (item.getItemId() == R.id.action_settings) {
       Intent intent = new Intent(this, SettingsActivity.class);
       startActivity(intent);
+      return true;
+    } else if (item.getItemId() == R.id.action_loopback) {
+      connectToRoom(null, false, true, 0);
       return true;
     } else {
       return super.onOptionsItemSelected(item);
@@ -217,28 +248,13 @@ public class ConnectActivity extends Activity {
     }
   }
 
-  private final OnClickListener connectListener = new OnClickListener() {
-    @Override
-    public void onClick(View view) {
-      boolean loopback = false;
-      if (view.getId() == R.id.connect_loopback_button) {
-        loopback = true;
-      }
-      commandLineRun = false;
-      connectToRoom(loopback, 0);
-    }
-  };
+  private void connectToRoom(
+      String roomId, boolean commandLineRun, boolean loopback, int runTimeMs) {
+    this.commandLineRun = commandLineRun;
 
-  private void connectToRoom(boolean loopback, int runTimeMs) {
-    // Get room name (random for loopback).
-    String roomId;
+    // roomId is random for loopback.
     if (loopback) {
       roomId = Integer.toString((new Random()).nextInt(100000000));
-    } else {
-      roomId = getSelectedItem();
-      if (roomId == null) {
-        roomId = roomEditText.getText().toString();
-      }
     }
 
     String roomUrl = sharedPref.getString(
@@ -248,6 +264,10 @@ public class ConnectActivity extends Activity {
     // Video call enabled flag.
     boolean videoCallEnabled = sharedPref.getBoolean(keyprefVideoCallEnabled,
         Boolean.valueOf(getString(R.string.pref_videocall_default)));
+
+    // Use Camera2 option.
+    boolean useCamera2 = sharedPref.getBoolean(keyprefCamera2,
+        Boolean.valueOf(getString(R.string.pref_camera2_default)));
 
     // Get default codecs.
     String videoCodec = sharedPref.getString(keyprefVideoCodec,
@@ -277,6 +297,21 @@ public class ConnectActivity extends Activity {
     boolean useOpenSLES = sharedPref.getBoolean(
         keyprefOpenSLES,
         Boolean.valueOf(getString(R.string.pref_opensles_default)));
+
+    // Check Disable built-in AEC flag.
+    boolean disableBuiltInAEC = sharedPref.getBoolean(
+        keyprefDisableBuiltInAec,
+        Boolean.valueOf(getString(R.string.pref_disable_built_in_aec_default)));
+
+    // Check Disable built-in AGC flag.
+    boolean disableBuiltInAGC = sharedPref.getBoolean(
+        keyprefDisableBuiltInAgc,
+        Boolean.valueOf(getString(R.string.pref_disable_built_in_agc_default)));
+
+    // Check Disable built-in NS flag.
+    boolean disableBuiltInNS = sharedPref.getBoolean(
+        keyprefDisableBuiltInNs,
+        Boolean.valueOf(getString(R.string.pref_disable_built_in_ns_default)));
 
     // Get video resolution from settings.
     int videoWidth = 0;
@@ -349,6 +384,7 @@ public class ConnectActivity extends Activity {
       intent.putExtra(CallActivity.EXTRA_ROOMID, roomId);
       intent.putExtra(CallActivity.EXTRA_LOOPBACK, loopback);
       intent.putExtra(CallActivity.EXTRA_VIDEO_CALL, videoCallEnabled);
+      intent.putExtra(CallActivity.EXTRA_CAMERA2, useCamera2);
       intent.putExtra(CallActivity.EXTRA_VIDEO_WIDTH, videoWidth);
       intent.putExtra(CallActivity.EXTRA_VIDEO_HEIGHT, videoHeight);
       intent.putExtra(CallActivity.EXTRA_VIDEO_FPS, cameraFps);
@@ -362,6 +398,9 @@ public class ConnectActivity extends Activity {
           noAudioProcessing);
       intent.putExtra(CallActivity.EXTRA_AECDUMP_ENABLED, aecDump);
       intent.putExtra(CallActivity.EXTRA_OPENSLES_ENABLED, useOpenSLES);
+      intent.putExtra(CallActivity.EXTRA_DISABLE_BUILT_IN_AEC, disableBuiltInAEC);
+      intent.putExtra(CallActivity.EXTRA_DISABLE_BUILT_IN_AGC, disableBuiltInAGC);
+      intent.putExtra(CallActivity.EXTRA_DISABLE_BUILT_IN_NS, disableBuiltInNS);
       intent.putExtra(CallActivity.EXTRA_AUDIO_BITRATE, audioStartBitrate);
       intent.putExtra(CallActivity.EXTRA_AUDIOCODEC, audioCodec);
       intent.putExtra(CallActivity.EXTRA_DISPLAY_HUD, displayHud);
@@ -390,7 +429,16 @@ public class ConnectActivity extends Activity {
     return false;
   }
 
-  private final OnClickListener addRoomListener = new OnClickListener() {
+  private final AdapterView.OnItemClickListener
+      roomListClickListener = new AdapterView.OnItemClickListener() {
+    @Override
+    public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
+      String roomId = ((TextView) view).getText().toString();
+      connectToRoom(roomId, false, false, 0);
+    }
+  };
+
+  private final OnClickListener addFavoriteListener = new OnClickListener() {
     @Override
     public void onClick(View view) {
       String newRoom = roomEditText.getText().toString();
@@ -401,30 +449,10 @@ public class ConnectActivity extends Activity {
     }
   };
 
-  private final OnClickListener removeRoomListener = new OnClickListener() {
+  private final OnClickListener connectListener = new OnClickListener() {
     @Override
     public void onClick(View view) {
-      String selectedRoom = getSelectedItem();
-      if (selectedRoom != null) {
-        adapter.remove(selectedRoom);
-        adapter.notifyDataSetChanged();
-      }
+      connectToRoom(roomEditText.getText().toString(), false, false, 0);
     }
   };
-
-  private String getSelectedItem() {
-    int position = AdapterView.INVALID_POSITION;
-    if (roomListView.getCheckedItemCount() > 0 && adapter.getCount() > 0) {
-      position = roomListView.getCheckedItemPosition();
-      if (position >= adapter.getCount()) {
-        position = AdapterView.INVALID_POSITION;
-      }
-    }
-    if (position != AdapterView.INVALID_POSITION) {
-      return adapter.getItem(position);
-    } else {
-      return null;
-    }
-  }
-
 }

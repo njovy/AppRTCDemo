@@ -14,16 +14,20 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
+import java.util.LinkedList;
+import java.util.List;
 import java.util.concurrent.Executor;
 
 /**
- * Looper based executor class.
+ * Looper based executor class. This is needed because WebSocketClient from autobanh requires the
+ * thread to have a looper. The class is used in WebSocketRTCClient/WebSocketChannelClient.
  */
 public class LooperExecutor extends Thread implements Executor {
   private static final String TAG = "LooperExecutor";
   // Object used to signal that looper thread has started and Handler instance
   // associated with looper thread has been allocated.
   private final Object looperStartedEvent = new Object();
+  private final List<Runnable> scheduledPeriodicRunnables = new LinkedList<Runnable>();
   private Handler handler = null;
   private boolean running = false;
   private long threadId;
@@ -68,7 +72,7 @@ public class LooperExecutor extends Thread implements Executor {
     handler.post(new Runnable() {
       @Override
       public void run() {
-        Looper.myLooper().quit();
+        handler.getLooper().quit();
         Log.d(TAG, "Looper thread finished.");
       }
     });
@@ -77,6 +81,41 @@ public class LooperExecutor extends Thread implements Executor {
   // Checks if current thread is a looper thread.
   public boolean checkOnLooperThread() {
     return (Thread.currentThread().getId() == threadId);
+  }
+
+  public synchronized void scheduleAtFixedRate(final Runnable command, final long periodMillis) {
+    if (!running) {
+      Log.w(TAG, "Trying to schedule task for non running executor");
+      return;
+    }
+    Runnable runnable = new Runnable() {
+      @Override
+      public void run() {
+        if (running) {
+          command.run();
+          if (!handler.postDelayed(this, periodMillis)) {
+            Log.e(TAG, "Failed to post a delayed runnable in the chain.");
+          }
+        }
+      }
+    };
+    scheduledPeriodicRunnables.add(runnable);
+    if (!handler.postDelayed(runnable, periodMillis)) {
+      Log.e(TAG, "Failed to post a delayed runnable.");
+    }
+  }
+
+  public synchronized void cancelScheduledTasks() {
+    if (!running) {
+      Log.w(TAG, "Trying to cancel schedule tasks for non running executor");
+      return;
+    }
+
+    // Stop scheduled periodic tasks.
+    for (Runnable r : scheduledPeriodicRunnables) {
+      handler.removeCallbacks(r);
+    }
+    scheduledPeriodicRunnables.clear();
   }
 
   @Override
@@ -92,4 +131,10 @@ public class LooperExecutor extends Thread implements Executor {
     }
   }
 
+  /**
+   * Access to the handler for testing purposes.
+   */
+  Handler getHandler() {
+    return handler;
+  }
 }
