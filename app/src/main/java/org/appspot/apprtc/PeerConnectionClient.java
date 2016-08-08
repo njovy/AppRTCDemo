@@ -28,7 +28,6 @@ import org.webrtc.DataChannel;
 import org.webrtc.EglBase;
 import org.webrtc.IceCandidate;
 import org.webrtc.Logging;
-import org.webrtc.MediaCodecVideoEncoder;
 import org.webrtc.MediaConstraints;
 import org.webrtc.MediaConstraints.KeyValuePair;
 import org.webrtc.MediaStream;
@@ -80,6 +79,7 @@ public class PeerConnectionClient {
   private static final String AUDIO_AUTO_GAIN_CONTROL_CONSTRAINT= "googAutoGainControl";
   private static final String AUDIO_HIGH_PASS_FILTER_CONSTRAINT  = "googHighpassFilter";
   private static final String AUDIO_NOISE_SUPPRESSION_CONSTRAINT = "googNoiseSuppression";
+  private static final String AUDIO_LEVEL_CONTROL_CONSTRAINT = "levelControl";
   private static final String MAX_VIDEO_WIDTH_CONSTRAINT = "maxWidth";
   private static final String MIN_VIDEO_WIDTH_CONSTRAINT = "minWidth";
   private static final String MAX_VIDEO_HEIGHT_CONSTRAINT = "maxHeight";
@@ -162,6 +162,7 @@ public class PeerConnectionClient {
     public final boolean disableBuiltInAEC;
     public final boolean disableBuiltInAGC;
     public final boolean disableBuiltInNS;
+    public final boolean enableLevelControl;
 
     public PeerConnectionParameters(
         boolean videoCallEnabled, boolean loopback, boolean tracing, boolean useCamera2,
@@ -169,7 +170,8 @@ public class PeerConnectionClient {
         int videoStartBitrate, String videoCodec, boolean videoCodecHwAcceleration,
         boolean captureToTexture, int audioStartBitrate, String audioCodec,
         boolean noAudioProcessing, boolean aecDump, boolean useOpenSLES,
-        boolean disableBuiltInAEC, boolean disableBuiltInAGC, boolean disableBuiltInNS) {
+        boolean disableBuiltInAEC, boolean disableBuiltInAGC, boolean disableBuiltInNS,
+        boolean enableLevelControl) {
       this.videoCallEnabled = videoCallEnabled;
       this.useCamera2 = useCamera2;
       this.loopback = loopback;
@@ -189,6 +191,7 @@ public class PeerConnectionClient {
       this.disableBuiltInAEC = disableBuiltInAEC;
       this.disableBuiltInAGC = disableBuiltInAGC;
       this.disableBuiltInNS = disableBuiltInNS;
+      this.enableLevelControl = enableLevelControl;
     }
   }
 
@@ -407,10 +410,10 @@ public class PeerConnectionClient {
     // Enable DTLS for normal calls and disable for loopback calls.
     if (peerConnectionParameters.loopback) {
       pcConstraints.optional.add(
-          new KeyValuePair(DTLS_SRTP_KEY_AGREEMENT_CONSTRAINT, "false"));
+          new MediaConstraints.KeyValuePair(DTLS_SRTP_KEY_AGREEMENT_CONSTRAINT, "false"));
     } else {
       pcConstraints.optional.add(
-          new KeyValuePair(DTLS_SRTP_KEY_AGREEMENT_CONSTRAINT, "true"));
+          new MediaConstraints.KeyValuePair(DTLS_SRTP_KEY_AGREEMENT_CONSTRAINT, "true"));
     }
 
     // Check if there is a camera on device and disable video call if not.
@@ -446,24 +449,29 @@ public class PeerConnectionClient {
     // added for audio performance measurements
     if (peerConnectionParameters.noAudioProcessing) {
       Log.d(TAG, "Disabling audio processing");
-      audioConstraints.mandatory.add(new KeyValuePair(
+      audioConstraints.mandatory.add(new MediaConstraints.KeyValuePair(
             AUDIO_ECHO_CANCELLATION_CONSTRAINT, "false"));
-      audioConstraints.mandatory.add(new KeyValuePair(
+      audioConstraints.mandatory.add(new MediaConstraints.KeyValuePair(
             AUDIO_AUTO_GAIN_CONTROL_CONSTRAINT, "false"));
-      audioConstraints.mandatory.add(new KeyValuePair(
+      audioConstraints.mandatory.add(new MediaConstraints.KeyValuePair(
             AUDIO_HIGH_PASS_FILTER_CONSTRAINT, "false"));
-      audioConstraints.mandatory.add(new KeyValuePair(
+      audioConstraints.mandatory.add(new MediaConstraints.KeyValuePair(
            AUDIO_NOISE_SUPPRESSION_CONSTRAINT , "false"));
+    }
+    if (peerConnectionParameters.enableLevelControl) {
+      Log.d(TAG, "Enabling level control.");
+      audioConstraints.mandatory.add(new MediaConstraints.KeyValuePair(
+          AUDIO_LEVEL_CONTROL_CONSTRAINT, "true"));
     }
     // Create SDP constraints.
     sdpMediaConstraints = new MediaConstraints();
-    sdpMediaConstraints.mandatory.add(new KeyValuePair(
+    sdpMediaConstraints.mandatory.add(new MediaConstraints.KeyValuePair(
         "OfferToReceiveAudio", "true"));
     if (videoCallEnabled || peerConnectionParameters.loopback) {
-      sdpMediaConstraints.mandatory.add(new KeyValuePair(
+      sdpMediaConstraints.mandatory.add(new MediaConstraints.KeyValuePair(
           "OfferToReceiveVideo", "true"));
     } else {
-      sdpMediaConstraints.mandatory.add(new KeyValuePair(
+      sdpMediaConstraints.mandatory.add(new MediaConstraints.KeyValuePair(
           "OfferToReceiveVideo", "false"));
     }
   }
@@ -1044,7 +1052,7 @@ public class PeerConnectionClient {
 
     @Override
     public void onIceConnectionChange(
-        final IceConnectionState newState) {
+        final PeerConnection.IceConnectionState newState) {
       executor.execute(new Runnable() {
         @Override
         public void run() {
