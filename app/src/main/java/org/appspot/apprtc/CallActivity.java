@@ -13,6 +13,7 @@ package org.appspot.apprtc;
 import org.appspot.apprtc.AppRTCClient.RoomConnectionParameters;
 import org.appspot.apprtc.AppRTCClient.SignalingParameters;
 import org.appspot.apprtc.PeerConnectionClient.PeerConnectionParameters;
+import org.appspot.apprtc.PeerConnectionClient.DataChannelParameters;
 import org.appspot.apprtc.util.LooperExecutor;
 
 import android.app.Activity;
@@ -97,6 +98,21 @@ public class CallActivity extends Activity
       "org.appspot.apprtc.CMDLINE";
   public static final String EXTRA_RUNTIME =
       "org.appspot.apprtc.RUNTIME";
+  public static final String EXTRA_DATA_CHANNEL_ENABLED =
+          "org.appspot.apprtc.DATA_CHANNEL_ENABLED";
+  public static final String EXTRA_ORDERED =
+          "org.appspot.apprtc.ORDERED";
+  public static final String EXTRA_MAX_RETRANSMITS_MS =
+          "org.appspot.apprtc.MAX_RETRANSMITS_MS";
+  public static final String EXTRA_MAX_RETRANSMITS =
+          "org.appspot.apprtc.MAX_RETRANSMITS";
+  public static final String EXTRA_PROTOCOL =
+          "org.appspot.apprtc.PROTOCOL";
+  public static final String EXTRA_NEGOTIATED =
+          "org.appspot.apprtc.NEGOTIATED";
+  public static final String EXTRA_ID =
+          "org.appspot.apprtc.ID";
+
   private static final String TAG = "CallRTCClient";
 
   // List of mandatory application permissions.
@@ -236,6 +252,16 @@ public class CallActivity extends Activity
     boolean useCamera2 = Camera2Enumerator.isSupported()
         && intent.getBooleanExtra(EXTRA_CAMERA2, true);
 
+    DataChannelParameters dataChannelParameters = null;
+    if (intent.getBooleanExtra(EXTRA_DATA_CHANNEL_ENABLED, true)) {
+      dataChannelParameters = new DataChannelParameters(
+              intent.getBooleanExtra(EXTRA_ORDERED, true),
+              intent.getIntExtra(EXTRA_MAX_RETRANSMITS_MS, -1),
+              intent.getIntExtra(EXTRA_MAX_RETRANSMITS, -1),
+              intent.getStringExtra(EXTRA_PROTOCOL),
+              intent.getBooleanExtra(EXTRA_NEGOTIATED, false),
+              intent.getIntExtra(EXTRA_ID, -1));
+    }
     peerConnectionParameters = new PeerConnectionParameters(
         intent.getBooleanExtra(EXTRA_VIDEO_CALL, true),
         loopback,
@@ -256,7 +282,7 @@ public class CallActivity extends Activity
         intent.getBooleanExtra(EXTRA_DISABLE_BUILT_IN_AEC, false),
         intent.getBooleanExtra(EXTRA_DISABLE_BUILT_IN_AGC, false),
         intent.getBooleanExtra(EXTRA_DISABLE_BUILT_IN_NS, false),
-        intent.getBooleanExtra(EXTRA_ENABLE_LEVEL_CONTROL, false));
+        intent.getBooleanExtra(EXTRA_ENABLE_LEVEL_CONTROL, false), dataChannelParameters);
     commandLineRun = intent.getBooleanExtra(EXTRA_CMDLINE, false);
     runTimeMs = intent.getIntExtra(EXTRA_RUNTIME, 0);
 

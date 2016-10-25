@@ -53,6 +53,14 @@ public class SettingsActivity extends Activity
   private String keyPrefDisplayHud;
   private String keyPrefTracing;
 
+  private String keyprefEnableDataChannel;
+  private String keyprefOrdered;
+  private String keyprefMaxRetransmitTimeMs;
+  private String keyprefMaxRetransmits;
+  private String keyprefDataProtocol;
+  private String keyprefNegotiated;
+  private String keyprefDataId;
+
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
@@ -82,6 +90,14 @@ public class SettingsActivity extends Activity
     keyPrefRoomServerUrl = getString(R.string.pref_room_server_url_key);
     keyPrefDisplayHud = getString(R.string.pref_displayhud_key);
     keyPrefTracing = getString(R.string.pref_tracing_key);
+
+    keyprefEnableDataChannel = getString(R.string.pref_enable_datachannel_key);
+    keyprefOrdered = getString(R.string.pref_ordered_key);
+    keyprefMaxRetransmitTimeMs = getString(R.string.pref_max_retransmit_time_ms_key);
+    keyprefMaxRetransmits = getString(R.string.pref_max_retransmits_key);
+    keyprefDataProtocol = getString(R.string.pref_data_protocol_key);
+    keyprefNegotiated = getString(R.string.pref_negotiated_key);
+    keyprefDataId = getString(R.string.pref_data_id_key);
 
     // Display the fragment as the main content.
     settingsFragment = new SettingsFragment();
@@ -125,6 +141,12 @@ public class SettingsActivity extends Activity
     updateSummary(sharedPreferences, keyPrefRoomServerUrl);
     updateSummaryB(sharedPreferences, keyPrefDisplayHud);
     updateSummaryB(sharedPreferences, keyPrefTracing);
+    updateSummaryB(sharedPreferences, keyprefEnableDataChannel);
+
+    updateSummary(sharedPreferences, keyprefMaxRetransmits);
+    updateSummary(sharedPreferences, keyprefMaxRetransmitTimeMs);
+    updateSummary(sharedPreferences, keyprefDataId);
+    updateSummary(sharedPreferences, keyprefDataProtocol);
 
     if (!Camera2Enumerator.isSupported()) {
       Preference camera2Preference =
@@ -210,6 +232,9 @@ public class SettingsActivity extends Activity
     if (key.equals(keyprefStartAudioBitrateType)) {
       setAudioBitrateEnable(sharedPreferences);
     }
+    if (key.equals(keyprefEnableDataChannel)) {
+      setDataChannelEnable(sharedPreferences);
+    }
   }
 
   private void updateSummary(SharedPreferences sharedPreferences, String key) {
@@ -260,5 +285,15 @@ public class SettingsActivity extends Activity
     } else {
       bitratePreferenceValue.setEnabled(true);
     }
+  }
+
+  private void setDataChannelEnable(SharedPreferences sharedPreferences) {
+    boolean enabled = sharedPreferences.getBoolean(keyprefEnableDataChannel, true);
+    settingsFragment.findPreference(keyprefOrdered).setEnabled(enabled);
+    settingsFragment.findPreference(keyprefMaxRetransmitTimeMs).setEnabled(enabled);
+    settingsFragment.findPreference(keyprefMaxRetransmits).setEnabled(enabled);
+    settingsFragment.findPreference(keyprefDataProtocol).setEnabled(enabled);
+    settingsFragment.findPreference(keyprefNegotiated).setEnabled(enabled);
+    settingsFragment.findPreference(keyprefDataId).setEnabled(enabled);
   }
 }

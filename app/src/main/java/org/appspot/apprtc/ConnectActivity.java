@@ -81,6 +81,13 @@ public class ConnectActivity extends Activity {
   private String keyprefRoomList;
   private ArrayList<String> roomList;
   private ArrayAdapter<String> adapter;
+  private String keyprefEnableDataChannel;
+  private String keyprefOrdered;
+  private String keyprefMaxRetransmitTimeMs;
+  private String keyprefMaxRetransmits;
+  private String keyprefDataProtocol;
+  private String keyprefNegotiated;
+  private String keyprefDataId;
 
   @Override
   public void onCreate(Bundle savedInstanceState) {
@@ -114,6 +121,13 @@ public class ConnectActivity extends Activity {
     keyprefRoomServerUrl = getString(R.string.pref_room_server_url_key);
     keyprefRoom = getString(R.string.pref_room_key);
     keyprefRoomList = getString(R.string.pref_room_list_key);
+    keyprefEnableDataChannel = getString(R.string.pref_enable_datachannel_key);
+    keyprefOrdered = getString(R.string.pref_ordered_key);
+    keyprefMaxRetransmitTimeMs = getString(R.string.pref_max_retransmit_time_ms_key);
+    keyprefMaxRetransmits = getString(R.string.pref_max_retransmits_key);
+    keyprefDataProtocol = getString(R.string.pref_data_protocol_key);
+    keyprefNegotiated = getString(R.string.pref_negotiated_key);
+    keyprefDataId = getString(R.string.pref_data_id_key);
 
     setContentView(R.layout.activity_connect);
 
@@ -415,6 +429,26 @@ public class ConnectActivity extends Activity {
       intent.putExtra(CallActivity.EXTRA_TRACING, tracing);
       intent.putExtra(CallActivity.EXTRA_CMDLINE, commandLineRun);
       intent.putExtra(CallActivity.EXTRA_RUNTIME, runTimeMs);
+
+
+      //Get datachannel options
+      boolean dataChannelEnabled = sharedPref.getBoolean(keyprefEnableDataChannel, true);
+      intent.putExtra(CallActivity.EXTRA_DATA_CHANNEL_ENABLED, dataChannelEnabled);
+
+      if (dataChannelEnabled) {
+        boolean ordered = sharedPref.getBoolean(keyprefOrdered, true);
+        boolean negotiated = sharedPref.getBoolean(keyprefNegotiated, false);
+        int maxRetrMs = Integer.parseInt(sharedPref.getString(keyprefMaxRetransmitTimeMs, "-1"));
+        int maxRetr = Integer.parseInt(sharedPref.getString(keyprefMaxRetransmits, "-1"));
+        int id = Integer.parseInt(sharedPref.getString(keyprefDataId, "-1"));
+        String protocol = sharedPref.getString(keyprefDataProtocol, "");
+        intent.putExtra(CallActivity.EXTRA_ORDERED, ordered);
+        intent.putExtra(CallActivity.EXTRA_MAX_RETRANSMITS_MS, maxRetrMs);
+        intent.putExtra(CallActivity.EXTRA_MAX_RETRANSMITS, maxRetr);
+        intent.putExtra(CallActivity.EXTRA_PROTOCOL, protocol);
+        intent.putExtra(CallActivity.EXTRA_NEGOTIATED, negotiated);
+        intent.putExtra(CallActivity.EXTRA_ID, id);
+      }
 
       startActivityForResult(intent, CONNECTION_REQUEST);
     }

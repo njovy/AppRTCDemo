@@ -29,7 +29,6 @@ import org.webrtc.EglBase;
 import org.webrtc.IceCandidate;
 import org.webrtc.Logging;
 import org.webrtc.MediaConstraints;
-import org.webrtc.MediaConstraints.KeyValuePair;
 import org.webrtc.MediaStream;
 import org.webrtc.PeerConnection;
 import org.webrtc.PeerConnection.IceConnectionState;
@@ -47,6 +46,7 @@ import org.webrtc.voiceengine.WebRtcAudioUtils;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.EnumSet;
 import java.util.LinkedList;
 import java.util.Timer;
@@ -138,6 +138,31 @@ public class PeerConnectionClient {
   // enableAudio is set to true if audio should be sent.
   private boolean enableAudio;
   private AudioTrack localAudioTrack;
+  private DataChannel dataChannel;
+  private boolean dataChannelEnabled;
+
+  /**
+   * Peer connection parameters.
+   */
+  public static class DataChannelParameters {
+    public final boolean ordered;
+    public final int maxRetransmitTimeMs;
+    public final int maxRetransmits;
+    public final String protocol;
+    public final boolean negotiated;
+    public final int id;
+
+    public DataChannelParameters(
+            boolean ordered, int maxRetransmitTimeMs, int maxRetransmits, String protocol,
+            boolean negotiated, int id) {
+      this.ordered = ordered;
+      this.maxRetransmitTimeMs = maxRetransmitTimeMs;
+      this.maxRetransmits = maxRetransmits;
+      this.protocol = protocol;
+      this.negotiated = negotiated;
+      this.id = id;
+    }
+  }
 
   /**
    * Peer connection parameters.
@@ -163,6 +188,21 @@ public class PeerConnectionClient {
     public final boolean disableBuiltInAGC;
     public final boolean disableBuiltInNS;
     public final boolean enableLevelControl;
+    private final DataChannelParameters dataChannelParameters;
+
+    public PeerConnectionParameters(
+            boolean videoCallEnabled, boolean loopback, boolean tracing, boolean useCamera2,
+            int videoWidth, int videoHeight, int videoFps,
+            int videoStartBitrate, String videoCodec, boolean videoCodecHwAcceleration,
+            boolean captureToTexture, int audioStartBitrate, String audioCodec,
+            boolean noAudioProcessing, boolean aecDump, boolean useOpenSLES,
+            boolean disableBuiltInAEC, boolean disableBuiltInAGC, boolean disableBuiltInNS,
+            boolean enableLevelControl) {
+      this(videoCallEnabled, loopback, tracing, useCamera2, videoWidth, videoHeight, videoFps,
+      videoStartBitrate, videoCodec, videoCodecHwAcceleration, captureToTexture, audioStartBitrate,
+      audioCodec, noAudioProcessing, aecDump, useOpenSLES, disableBuiltInAEC, disableBuiltInAGC,
+      disableBuiltInNS, enableLevelControl, null);
+    }
 
     public PeerConnectionParameters(
         boolean videoCallEnabled, boolean loopback, boolean tracing, boolean useCamera2,
@@ -171,7 +211,7 @@ public class PeerConnectionClient {
         boolean captureToTexture, int audioStartBitrate, String audioCodec,
         boolean noAudioProcessing, boolean aecDump, boolean useOpenSLES,
         boolean disableBuiltInAEC, boolean disableBuiltInAGC, boolean disableBuiltInNS,
-        boolean enableLevelControl) {
+        boolean enableLevelControl, DataChannelParameters dataChannelParameters) {
       this.videoCallEnabled = videoCallEnabled;
       this.useCamera2 = useCamera2;
       this.loopback = loopback;
@@ -192,6 +232,7 @@ public class PeerConnectionClient {
       this.disableBuiltInAGC = disableBuiltInAGC;
       this.disableBuiltInNS = disableBuiltInNS;
       this.enableLevelControl = enableLevelControl;
+      this.dataChannelParameters = dataChannelParameters;
     }
   }
 
@@ -264,6 +305,7 @@ public class PeerConnectionClient {
     this.peerConnectionParameters = peerConnectionParameters;
     this.events = events;
     videoCallEnabled = peerConnectionParameters.videoCallEnabled;
+    dataChannelEnabled = peerConnectionParameters.dataChannelParameters != null;
     // Reset variables to initial states.
     this.context = null;
     factory = null;
@@ -534,6 +576,17 @@ public class PeerConnectionClient {
 
     peerConnection = factory.createPeerConnection(
         rtcConfig, pcConstraints, pcObserver);
+
+    if (dataChannelEnabled) {
+      DataChannel.Init init = new DataChannel.Init();
+      init.ordered = peerConnectionParameters.dataChannelParameters.ordered;
+      init.negotiated = peerConnectionParameters.dataChannelParameters.negotiated;
+      init.maxRetransmits = peerConnectionParameters.dataChannelParameters.maxRetransmits;
+      init.maxRetransmitTimeMs = peerConnectionParameters.dataChannelParameters.maxRetransmitTimeMs;
+      init.id = peerConnectionParameters.dataChannelParameters.id;
+      init.protocol = peerConnectionParameters.dataChannelParameters.protocol;
+      dataChannel = peerConnection.createDataChannel("ApprtcDemo data", init);
+    }
     isInitiator = false;
 
     // Set default WebRTC tracing and INFO libjingle logging.
@@ -592,6 +645,10 @@ public class PeerConnectionClient {
     }
     Log.d(TAG, "Closing peer connection.");
     statsTimer.cancel();
+    if (dataChannel != null) {
+      dataChannel.dispose();
+      dataChannel = null;
+    }
     if (peerConnection != null) {
       peerConnection.dispose();
       peerConnection = null;
@@ -1112,8 +1169,43 @@ public class PeerConnectionClient {
 
     @Override
     public void onDataChannel(final DataChannel dc) {
-      reportError("AppRTC doesn't use data channels, but got: " + dc.label()
-          + " anyway!");
+      Log.d(TAG, "NEW Data channel " + dc.label());
+
+      if (!dataChannelEnabled)
+        return;
+
+      dc.registerObserver(new DataChannel.Observer() {
+        public void onBufferedAmountChange(long var1){
+          Log.d(TAG,
+                  "Data channel buffered amount changed: " + dc.label() + ": " + dc.state());
+        }
+
+        @Override
+        public void onStateChange() {
+          Log.d(TAG,
+                  "Data channel state changed: " + dc.label() + ": " + dc.state());
+        }
+
+        @Override
+        public void onMessage(final DataChannel.Buffer buffer) {
+          if (buffer.binary) {
+            Log.d(TAG, "Received binary msg over " + dc);
+            return;
+          }
+          ByteBuffer data = buffer.data;
+          final byte[] bytes = new byte[ data.capacity() ];
+          data.get(bytes);
+          Runnable command = new Runnable() {
+            @Override
+            public void run() {
+              // Get DC message as String.
+              String strData = new String(bytes);
+              Log.d(TAG, "Got msg: " + strData + " over " + dc);
+            }
+          };
+          executor.execute(command);
+        }
+      });
     }
 
     @Override
