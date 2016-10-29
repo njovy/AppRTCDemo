@@ -15,8 +15,8 @@ android {
     minSdkVersion 16
     targetSdkVersion 21
 
-    versionCode 13665
-    versionName "r13665"
+    versionCode 14827
+    versionName "r14827"
 
     testApplicationId "org.appspot.apprtc.test"
     testInstrumentationRunner "android.test.InstrumentationTestRunner"
