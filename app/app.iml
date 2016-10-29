@@ -102,5 +102,7 @@
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" exported="" name="libjingle_peerconnection" level="project" />
     <orderEntry type="library" exported="" name="autobanh" level="project" />
+    <orderEntry type="library" exported="" name="base" level="project" />
+    <orderEntry type="library" exported="" name="android-android-23" level="project" />
   </component>
 </module>
