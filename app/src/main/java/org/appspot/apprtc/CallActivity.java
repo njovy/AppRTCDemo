@@ -616,7 +616,7 @@ public class CallActivity extends Activity implements AppRTCClient.SignalingEven
     signalingParameters = params;
     logAndToast("Creating peer connection, delay=" + delta + "ms");
     VideoCapturer videoCapturer = null;
-    if (peerConnectionParameters.videoCallEnabled && false) {
+    if (peerConnectionParameters.videoCallEnabled) {
       videoCapturer = createVideoCapturer();
     }
     peerConnectionClient.createPeerConnection(rootEglBase.getEglBaseContext(), localRender,
