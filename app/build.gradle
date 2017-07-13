@@ -2,7 +2,7 @@ apply plugin: 'com.android.application'
 
 android {
   compileSdkVersion 23
-  buildToolsVersion "23.0.2"
+  buildToolsVersion '25.0.0'
 
   sourceSets.main {
     jniLibs.srcDir 'libs'
@@ -35,6 +35,7 @@ android {
 }
 
 dependencies {
+  compile files('libs/audio_device_java.jar')
   compile files('libs/autobanh.jar')
   compile files('libs/base_java.jar')
   compile files('libs/libjingle_peerconnection.jar')

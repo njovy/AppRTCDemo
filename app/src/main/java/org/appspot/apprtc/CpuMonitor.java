@@ -16,7 +16,6 @@ import android.content.IntentFilter;
 import android.os.BatteryManager;
 import android.os.SystemClock;
 import android.util.Log;
-
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
@@ -24,6 +23,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Scanner;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
@@ -114,7 +114,7 @@ class CpuMonitor {
     private final int size;
     private double sum;
     private double currentValue;
-    private double circBuffer[];
+    private double[] circBuffer;
     private int circBufferIndex;
 
     public MovingAverage(int size) {
@@ -204,7 +204,8 @@ class CpuMonitor {
     }
 
     executor = Executors.newSingleThreadScheduledExecutor();
-    executor.scheduleAtFixedRate(new Runnable() {
+    @SuppressWarnings("unused") // Prevent downstream linter warnings.
+    Future<?> possiblyIgnoredError = executor.scheduleAtFixedRate(new Runnable() {
       @Override
       public void run() {
         cpuUtilizationTask();
@@ -479,7 +480,7 @@ class CpuMonitor {
         // cpu  5093818 271838 3512830 165934119 101374 447076 272086 0 0 0
         //       user    nice  system     idle   iowait  irq   softirq
         String line = reader.readLine();
-        String lines[] = line.split("\\s+");
+        String[] lines = line.split("\\s+");
         int length = lines.length;
         if (length >= 5) {
           userTime = parseLong(lines[1]); // user

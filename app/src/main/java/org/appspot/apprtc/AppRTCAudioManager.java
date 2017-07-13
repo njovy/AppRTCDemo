@@ -18,7 +18,9 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.media.AudioDeviceInfo;
 import android.media.AudioManager;
+import android.os.Build;
 import android.preference.PreferenceManager;
 import android.util.Log;
 
@@ -54,8 +56,8 @@ public class AppRTCAudioManager {
   /** Selected audio device change event. */
   public static interface AudioManagerEvents {
     // Callback fired once audio device is changed or list of available audio devices changed.
-    void onAudioDeviceChanged(AudioDevice selectedAudioDevice,
-        Set<AudioDevice> availableAudioDevices);
+    void onAudioDeviceChanged(
+        AudioDevice selectedAudioDevice, Set<AudioDevice> availableAudioDevices);
   }
 
   private final Context apprtcContext;
@@ -118,16 +120,16 @@ public class AppRTCAudioManager {
 
     // The proximity sensor should only be activated when there are exactly two
     // available audio devices.
-    if (audioDevices.size() == 2 && audioDevices.contains(AudioDevice.EARPIECE)
-        && audioDevices.contains(AudioDevice.SPEAKER_PHONE)) {
+    if (audioDevices.size() == 2 && audioDevices.contains(AppRTCAudioManager.AudioDevice.EARPIECE)
+        && audioDevices.contains(AppRTCAudioManager.AudioDevice.SPEAKER_PHONE)) {
       if (proximitySensor.sensorReportsNearState()) {
         // Sensor reports that a "handset is being held up to a person's ear",
         // or "something is covering the light sensor".
-        setAudioDeviceInternal(AudioDevice.EARPIECE);
+        setAudioDeviceInternal(AppRTCAudioManager.AudioDevice.EARPIECE);
       } else {
         // Sensor reports that a "handset is removed from a person's ear", or
         // "the light sensor is no longer covered".
-        setAudioDeviceInternal(AudioDevice.SPEAKER_PHONE);
+        setAudioDeviceInternal(AppRTCAudioManager.AudioDevice.SPEAKER_PHONE);
       }
     }
   }
@@ -437,7 +439,22 @@ public class AppRTCAudioManager {
    */
   @Deprecated
   private boolean hasWiredHeadset() {
-    return audioManager.isWiredHeadsetOn();
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+      return audioManager.isWiredHeadsetOn();
+    } else {
+      final AudioDeviceInfo[] devices = audioManager.getDevices(AudioManager.GET_DEVICES_ALL);
+      for (AudioDeviceInfo device : devices) {
+        final int type = device.getType();
+        if (type == AudioDeviceInfo.TYPE_WIRED_HEADSET) {
+          Log.d(TAG, "hasWiredHeadset: found wired headset");
+          return true;
+        } else if (type == AudioDeviceInfo.TYPE_USB_DEVICE) {
+          Log.d(TAG, "hasWiredHeadset: found USB audio device");
+          return true;
+        }
+      }
+      return false;
+    }
   }
 
   /**
