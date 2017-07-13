@@ -131,19 +131,28 @@ public class WebSocketRTCClient implements AppRTCClient, WebSocketChannelEvents 
 
   // Helper functions to get connection, post message and leave message URLs
   private String getConnectionUrl(RoomConnectionParameters connectionParameters) {
-    return connectionParameters.roomUrl + "/" + ROOM_JOIN + "/" + connectionParameters.roomId;
+    return connectionParameters.roomUrl + "/" + ROOM_JOIN + "/" + connectionParameters.roomId
+        + getQueryString(connectionParameters);
   }
 
   private String getMessageUrl(
       RoomConnectionParameters connectionParameters, SignalingParameters signalingParameters) {
     return connectionParameters.roomUrl + "/" + ROOM_MESSAGE + "/" + connectionParameters.roomId
-        + "/" + signalingParameters.clientId;
+        + "/" + signalingParameters.clientId + getQueryString(connectionParameters);
   }
 
   private String getLeaveUrl(
       RoomConnectionParameters connectionParameters, SignalingParameters signalingParameters) {
     return connectionParameters.roomUrl + "/" + ROOM_LEAVE + "/" + connectionParameters.roomId + "/"
-        + signalingParameters.clientId;
+        + signalingParameters.clientId + getQueryString(connectionParameters);
+  }
+
+  private String getQueryString(RoomConnectionParameters connectionParameters) {
+    if (connectionParameters.urlParameters != null) {
+      return "?" + connectionParameters.urlParameters;
+    } else {
+      return "";
+    }
   }
 
   // Callback issued when room parameters are extracted. Runs on local
@@ -412,7 +421,7 @@ public class WebSocketRTCClient implements AppRTCClient, WebSocketChannelEvents 
   }
 
   // Converts a JSON candidate to a Java object.
-  IceCandidate toJavaCandidate(JSONObject json) throws JSONException {
+  private IceCandidate toJavaCandidate(JSONObject json) throws JSONException {
     return new IceCandidate(
         json.getString("id"), json.getInt("label"), json.getString("candidate"));
   }
