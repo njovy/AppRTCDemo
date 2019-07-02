@@ -34,8 +34,8 @@ android {
 }
 
 dependencies {
-  compile files('libs/audio_device_java.jar')
-  compile files('libs/autobanh.jar')
-  compile files('libs/base_java.jar')
-  compile files('libs/libjingle_peerconnection.jar')
+  implementation files('libs/audio_device_java.jar')
+  implementation files('libs/autobanh.jar')
+  implementation files('libs/base_java.jar')
+  implementation files('libs/libjingle_peerconnection.jar')
 }
