@@ -10,16 +10,15 @@
 
 package org.appspot.apprtc;
 
+import android.os.Handler;
+import android.os.HandlerThread;
+import androidx.annotation.Nullable;
+import android.util.Log;
 import org.appspot.apprtc.RoomParametersFetcher.RoomParametersFetcherEvents;
 import org.appspot.apprtc.WebSocketChannelClient.WebSocketChannelEvents;
 import org.appspot.apprtc.WebSocketChannelClient.WebSocketConnectionState;
 import org.appspot.apprtc.util.AsyncHttpURLConnection;
 import org.appspot.apprtc.util.AsyncHttpURLConnection.AsyncHttpEvents;
-
-import android.os.Handler;
-import android.os.HandlerThread;
-import android.util.Log;
-
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -380,7 +379,7 @@ public class WebSocketRTCClient implements AppRTCClient, WebSocketChannelEvents 
 
   // Send SDP or ICE candidate to a room server.
   private void sendPostMessage(
-      final MessageType messageType, final String url, final String message) {
+      final MessageType messageType, final String url, @Nullable final String message) {
     String logInfo = url;
     if (message != null) {
       logInfo += ". Message: " + message;
@@ -421,7 +420,7 @@ public class WebSocketRTCClient implements AppRTCClient, WebSocketChannelEvents 
   }
 
   // Converts a JSON candidate to a Java object.
-  private IceCandidate toJavaCandidate(JSONObject json) throws JSONException {
+  IceCandidate toJavaCandidate(JSONObject json) throws JSONException {
     return new IceCandidate(
         json.getString("id"), json.getInt("label"), json.getString("candidate"));
   }

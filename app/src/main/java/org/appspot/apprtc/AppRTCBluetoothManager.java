@@ -27,6 +27,8 @@ import android.os.Process;
 import android.util.Log;
 import java.util.List;
 import java.util.Set;
+
+import androidx.annotation.Nullable;
 import org.appspot.apprtc.util.AppRTCUtils;
 import org.webrtc.ThreadUtils;
 
@@ -64,14 +66,18 @@ public class AppRTCBluetoothManager {
 
   private final Context apprtcContext;
   private final AppRTCAudioManager apprtcAudioManager;
+  @Nullable
   private final AudioManager audioManager;
   private final Handler handler;
 
   int scoConnectionAttempts;
   private State bluetoothState;
   private final BluetoothProfile.ServiceListener bluetoothServiceListener;
+  @Nullable
   private BluetoothAdapter bluetoothAdapter;
+  @Nullable
   private BluetoothHeadset bluetoothHeadset;
+  @Nullable
   private BluetoothDevice bluetoothDevice;
   private final BroadcastReceiver bluetoothHeadsetReceiver;
 
@@ -187,7 +193,7 @@ public class AppRTCBluetoothManager {
       }
       Log.d(TAG, "onReceive done: BT state=" + bluetoothState);
     }
-  };
+  }
 
   /** Construction. */
   static AppRTCBluetoothManager create(Context context, AppRTCAudioManager audioManager) {
@@ -390,6 +396,7 @@ public class AppRTCBluetoothManager {
   /**
    * Stubs for test mocks.
    */
+  @Nullable
   protected AudioManager getAudioManager(Context context) {
     return (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
   }

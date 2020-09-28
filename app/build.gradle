@@ -1,7 +1,7 @@
 apply plugin: 'com.android.application'
 
 android {
-  compileSdkVersion 23
+  compileSdkVersion 29
 
   sourceSets.main {
     jniLibs.srcDir 'libs'
@@ -12,7 +12,7 @@ android {
   defaultConfig {
     applicationId "org.appspot.apprtc"
     minSdkVersion 16
-    targetSdkVersion 21
+    targetSdkVersion 29
 
     versionCode 15663
     versionName "r15663"
@@ -31,11 +31,21 @@ android {
   lintOptions {
     abortOnError false
   }
+  compileOptions {
+    sourceCompatibility JavaVersion.VERSION_1_8
+    targetCompatibility JavaVersion.VERSION_1_8
+  }
 }
 
 dependencies {
-  compile files('libs/audio_device_java.jar')
+  implementation 'org.jetbrains:annotations:15.0'
+
+  // https://mvnrepository.com/artifact/androidx.annotation/annotation
+  compile group: 'androidx.annotation', name: 'annotation', version: '1.1.0'
+  api 'org.webrtc:google-webrtc:1.0.30039@aar'
+
+//  compile files('libs/audio_device_java.jar')
   compile files('libs/autobanh.jar')
-  compile files('libs/base_java.jar')
-  compile files('libs/libjingle_peerconnection.jar')
+//  compile files('libs/base_java.jar')
+//  compile files('libs/libjingle_peerconnection.jar')
 }

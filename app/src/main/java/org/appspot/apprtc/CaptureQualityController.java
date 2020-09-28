@@ -30,10 +30,10 @@ public class CaptureQualityController implements SeekBar.OnSeekBarChangeListener
   private static final int FRAMERATE_THRESHOLD = 15;
   private TextView captureFormatText;
   private CallFragment.OnCallEvents callEvents;
-  private int width = 0;
-  private int height = 0;
-  private int framerate = 0;
-  private double targetBandwidth = 0;
+  private int width;
+  private int height;
+  private int framerate;
+  private double targetBandwidth;
 
   public CaptureQualityController(
       TextView captureFormatText, CallFragment.OnCallEvents callEvents) {
@@ -47,7 +47,7 @@ public class CaptureQualityController implements SeekBar.OnSeekBarChangeListener
       int firstFps = calculateFramerate(targetBandwidth, first);
       int secondFps = calculateFramerate(targetBandwidth, second);
 
-      if (firstFps >= FRAMERATE_THRESHOLD && secondFps >= FRAMERATE_THRESHOLD
+      if ((firstFps >= FRAMERATE_THRESHOLD && secondFps >= FRAMERATE_THRESHOLD)
           || firstFps == secondFps) {
         // Compare resolution.
         return first.width * first.height - second.width * second.height;
@@ -69,7 +69,7 @@ public class CaptureQualityController implements SeekBar.OnSeekBarChangeListener
     }
 
     // Extract max bandwidth (in millipixels / second).
-    long maxCaptureBandwidth = java.lang.Long.MIN_VALUE;
+    long maxCaptureBandwidth = Long.MIN_VALUE;
     for (CaptureFormat format : formats) {
       maxCaptureBandwidth =
           Math.max(maxCaptureBandwidth, (long) format.width * format.height * format.framerate.max);
