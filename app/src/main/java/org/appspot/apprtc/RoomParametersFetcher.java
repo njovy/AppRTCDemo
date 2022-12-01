@@ -208,8 +208,10 @@ public class RoomParametersFetcher {
       JSONObject server = servers.getJSONObject(i);
       String url = server.getString("urls");
       String credential = server.has("credential") ? server.getString("credential") : "";
-        PeerConnection.IceServer turnServer =
-            PeerConnection.IceServer.builder(url)
+      String username = server.has("username") ? server.getString("username") : "";
+      PeerConnection.IceServer turnServer =
+          PeerConnection.IceServer.builder(url)
+              .setUsername(username)
               .setPassword(credential)
               .createIceServer();
       ret.add(turnServer);
